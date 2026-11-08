@@ -34,6 +34,7 @@ public:
     void framebufferSize(int& w, int& h) const;
     GLFWwindow* handle() const { return win_; }
     bool isX11() const;
+    static bool isX11Platform() { return x11_; }   // after the first window: which platform glfw picked (3.3 builds are x11 only)
 
 private:
     void create(const WindowOptions& o);

@@ -2,6 +2,8 @@
 #include "ui/mark.h"
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
+// glfw 3.4 has runtime platform selection and position hints; 3.3 (debian 12, ubuntu 22.04) does not
+#define CHAOS_GLFW34 (GLFW_VERSION_MAJOR > 3 || (GLFW_VERSION_MAJOR == 3 && GLFW_VERSION_MINOR >= 4))
 #include <stdexcept>
 #include <cstdio>
 
@@ -27,10 +29,16 @@ Window::Window(const WindowOptions& o) { create(o); }
 void Window::create(const WindowOptions& o) {
     if (count_ == 0) {
         glfwSetErrorCallback(glfwError);
+#if CHAOS_GLFW34
         if (o.forceX11) glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
         if (o.noLibdecor) glfwInitHint(GLFW_WAYLAND_LIBDECOR, GLFW_WAYLAND_DISABLE_LIBDECOR);
         if (!glfwInit()) throw std::runtime_error("glfwInit failed");
         x11_ = glfwGetPlatform() == GLFW_PLATFORM_X11;
+#else
+        // glfw 3.3 (debian 12, ubuntu 22.04): one platform baked in at build time, x11 on those distros. no platform or position hints
+        if (!glfwInit()) throw std::runtime_error("glfwInit failed");
+        x11_ = true;
+#endif
     }
     count_++;
     glfwDefaultWindowHints();
@@ -44,9 +52,11 @@ void Window::create(const WindowOptions& o) {
     glfwWindowHint(GLFW_FOCUSED, o.focusable ? GLFW_TRUE : GLFW_FALSE);
     glfwWindowHint(GLFW_FOCUS_ON_SHOW, o.focusable ? GLFW_TRUE : GLFW_FALSE);
     glfwWindowHint(GLFW_RESIZABLE, o.decorated ? GLFW_TRUE : GLFW_FALSE);
+#if CHAOS_GLFW34
     if (o.positioned) { glfwWindowHint(GLFW_POSITION_X, o.x); glfwWindowHint(GLFW_POSITION_Y, o.y); }
     // the desktop file is chaos.desktop: matching ids let wayland compositors and x11 pick its icon up
     glfwWindowHintString(GLFW_WAYLAND_APP_ID, "chaos");
+#endif
     glfwWindowHintString(GLFW_X11_CLASS_NAME, "chaos");
     glfwWindowHintString(GLFW_X11_INSTANCE_NAME, "chaos");
 #ifndef NDEBUG
@@ -54,7 +64,10 @@ void Window::create(const WindowOptions& o) {
 #endif
     win_ = glfwCreateWindow(o.width, o.height, o.title.c_str(), nullptr, nullptr);
     if (!win_) { if (--count_ == 0) glfwTerminate(); throw std::runtime_error("glfwCreateWindow failed (need OpenGL 4.3 core)"); }
-    if (o.decorated && glfwGetPlatform() == GLFW_PLATFORM_X11) {
+#if !CHAOS_GLFW34
+    if (o.positioned) glfwSetWindowPos(win_, o.x, o.y);
+#endif
+    if (o.decorated && x11_) {
         // the mark as the window icon. x11 only: wayland has no such request, it takes the desktop file's icon through the app id above
         auto p16 = mark::rgba(1, 0xf0, 0xb4, 0x3c), p32 = mark::rgba(2, 0xf0, 0xb4, 0x3c), p64 = mark::rgba(4, 0xf0, 0xb4, 0x3c);
         GLFWimage icons[] = { { 16, 16, p16.data() }, { 32, 32, p32.data() }, { 64, 64, p64.data() } };

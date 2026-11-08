@@ -1,4 +1,5 @@
 #include "platform/x11_wallpaper.h"
+#include "platform/window.h"
 #include <GLFW/glfw3.h>
 #define GLFW_EXPOSE_NATIVE_X11
 #include <GLFW/glfw3native.h>
@@ -11,10 +12,10 @@
 
 namespace chaos::x11 {
 
-unsigned long nativeWindow(GLFWwindow* win) { return glfwGetPlatform() == GLFW_PLATFORM_X11 ? glfwGetX11Window(win) : 0; }
+unsigned long nativeWindow(GLFWwindow* win) { return Window::isX11Platform() ? glfwGetX11Window(win) : 0; }
 
 bool makeWallpaper(GLFWwindow* win) {
-    if (glfwGetPlatform() != GLFW_PLATFORM_X11) return false;
+    if (!Window::isX11Platform()) return false;
     Display* dpy = glfwGetX11Display();
     ::Window w = glfwGetX11Window(win);
     auto atom = [&](const char* n) { return XInternAtom(dpy, n, False); };
@@ -40,7 +41,7 @@ bool makeWallpaper(GLFWwindow* win) {
 }
 
 bool activeWindowIsFullscreen() {
-    if (glfwGetPlatform() != GLFW_PLATFORM_X11) return false;
+    if (!Window::isX11Platform()) return false;
     Display* dpy = glfwGetX11Display();
     ::Window root = DefaultRootWindow(dpy);
     Atom actualType; int fmt; unsigned long n, after; unsigned char* data = nullptr;
