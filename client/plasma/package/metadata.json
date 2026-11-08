@@ -1,0 +1,14 @@
+{
+  "KPackageStructure": "Plasma/Wallpaper",
+  "KPlugin": {
+    "Id": "org.chaos.wallpaper",
+    "Name": "CHAOS",
+    "Description": "a seeded, non-repeating 3D dimension, rendered live",
+    "Icon": "preferences-desktop-wallpaper",
+    "Authors": [{ "Name": "PicasoTheDeal" }],
+    "Version": "1.1.0",
+    "License": "MIT",
+    "Category": "Wallpaper",
+    "Website": "https://chaos-eng.tetstack.dev"
+  }
+}

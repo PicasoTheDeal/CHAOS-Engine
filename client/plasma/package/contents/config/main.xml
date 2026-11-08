@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.kde.org/standards/kcfg/1.0 http://www.kde.org/standards/kcfg/1.0/kcfg.xsd">
+  <kcfgfile name=""/>
+  <group name="General">
+    <entry name="Seed" type="String"><default></default></entry>
+    <entry name="Mode" type="String"><default></default></entry>
+    <entry name="Fps" type="Int"><default>30</default></entry>
+    <entry name="Registry" type="String"><default>https://chaos-eng.tetstack.dev</default></entry>
+    <entry name="PauseOnBattery" type="Bool"><default>true</default></entry>
+    <entry name="Extras" type="String"><default></default></entry>
+    <entry name="RenderScale" type="Double"><default>0.75</default></entry>
+    <entry name="Samples" type="Int"><default>0</default></entry>
+    <entry name="Lite" type="Bool"><default>false</default></entry>
+    <entry name="ModelOn" type="Bool"><default>false</default></entry>
+    <entry name="Model" type="String"><default></default></entry>
+    <entry name="ModelSkin" type="String"><default>mono</default></entry>
+    <entry name="ModelColor" type="String"><default>#e7eee9</default></entry>
+    <entry name="ModelSkinSeed" type="String"><default></default></entry>
+    <entry name="PauseCovered" type="Bool"><default>false</default></entry>
+  </group>
+</kcfg>

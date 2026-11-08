@@ -1,0 +1,34 @@
+# Maintainer: PicasoTheDeal
+# AUR: chaos-engine-git. the registry site is not part of this package.
+pkgname=chaos-engine-git
+pkgver=1.1.0.r0
+pkgrel=1
+pkgdesc="CHAOS: a seeded, non-repeating 3D dimension as your linux wallpaper"
+arch=('x86_64')
+url="https://github.com/PicasoTheDeal/CHAOS"
+license=('MIT')
+depends=('glfw' 'libsodium' 'openssl' 'curl' 'libx11' 'libxext' 'glm' 'nlohmann-json')
+makedepends=('git' 'cmake' 'ninja' 'catch2')
+optdepends=('xorg-xwayland: wallpaper mode under a wayland session')
+provides=('chaos-engine')
+conflicts=('chaos-engine')
+source=("git+https://github.com/PicasoTheDeal/CHAOS-Wallpaper-Engine.git")
+sha256sums=('SKIP')
+
+pkgver() {
+  cd "$srcdir/CHAOS-Wallpaper-Engine"
+  printf "1.1.0.r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+}
+
+build() {
+  cmake -S "$srcdir/CHAOS-Wallpaper-Engine/client" -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
+  cmake --build build
+}
+
+check() {
+  ./build/chaos_tests
+}
+
+package() {
+  DESTDIR="$pkgdir" cmake --install build
+}

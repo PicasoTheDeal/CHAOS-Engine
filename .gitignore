@@ -1,0 +1,11 @@
+# engine builds
+client/build/
+client/build-container/
+client/third_party/blake3_src/
+client/third_party/stb_src/
+dist/
+
+# renders and tickets made while working
+*.png
+*.ticket
+server/dev/registry.db

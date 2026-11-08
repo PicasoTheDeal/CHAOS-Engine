@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Name=CHAOS
+GenericName=Seeded wallpaper engine
+Comment=A seeded, non-repeating 3D dimension on your desktop
+Exec=chaos
+Icon=chaos
+Terminal=false
+Categories=Graphics;Utility;
+Keywords=wallpaper;seed;3d;
+Actions=wallpaper;
+[Desktop Action wallpaper]
+Name=Start as wallpaper
+Exec=chaos --wallpaper
