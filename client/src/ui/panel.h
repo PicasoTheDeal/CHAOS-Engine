@@ -36,7 +36,7 @@ private:
     ImFont* counter_ = nullptr;
     ImFont* label_ = nullptr;     // jetbrains mono 600: labels, keys, tags
     ImFont* serif_ = nullptr;     // instrument serif italic: the one subtitle voice
-    int tab_ = 0;                 // 0 = setup; main.cpp leaves it there until the user is signed in and has rolled
+    int tab_ = 0;                 // 0 = setup; main.cpp leaves it there till you're signed in and have rolled
     Thumbs thumbs_;
     struct VaultRow { vault::Entry e; bool ok = false; std::string why; bool activated = false; Seed32 seed{}; };
     std::vector<VaultRow> entries_;      // verified once per refresh, not per frame

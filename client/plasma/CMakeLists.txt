@@ -16,6 +16,7 @@ target_link_libraries(chaosqmlplugin PRIVATE chaos_render)
 target_compile_options(chaosqml PRIVATE -Wall -Wextra)
 # refuse to link a plugin with a hole in it: an undefined symbol only shows up when plasmashell fails to load the
 # module, and that failure is a silent black desktop (2026-11-06: pickWallpaperSeed lived in the app, not a lib)
+# a missing symbol in a shared lib links fine and then plasmashell silently refuses to dlopen it. black desktop, no message. never again
 target_link_options(chaosqml PRIVATE -Wl,--no-undefined)
 target_link_options(chaosqmlplugin PRIVATE -Wl,--no-undefined)
 

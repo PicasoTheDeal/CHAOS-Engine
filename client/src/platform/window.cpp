@@ -46,7 +46,7 @@ void Window::create(const WindowOptions& o) {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
-    glfwWindowHint(GLFW_SAMPLES, 0);        // the post stack does its own msaa; a multisampled window refuses scaled blits into it
+    glfwWindowHint(GLFW_SAMPLES, 0);        // the post stack does its own msaa. a multisampled window refuses scaled blits into it and gl says nothing useful, that one cost me a whole black-window afternoon
     glfwWindowHint(GLFW_VISIBLE, (o.visible && o.autoShow) ? GLFW_TRUE : GLFW_FALSE);
     glfwWindowHint(GLFW_DECORATED, o.decorated ? GLFW_TRUE : GLFW_FALSE);
     glfwWindowHint(GLFW_FOCUSED, o.focusable ? GLFW_TRUE : GLFW_FALSE);

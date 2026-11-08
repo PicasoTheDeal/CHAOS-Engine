@@ -1,8 +1,9 @@
 #pragma once
 // ChaosView: a QQuickFramebufferObject that draws the engine. plasmashell hosts it as a wallpaper.
 // the gl work happens on qt's render thread, inside qt's context; we load gl from that context once.
-// the contract with plasmashell: never throw out of a qt callback, never block the gui thread, never touch a dead
+// the deal with plasmashell: never throw out of a qt callback, never block the gui thread, never touch a dead
 // object from a worker, never leave the desktop black without saying why (the status, the log, and the lobby).
+// plasmashell will not tell you what went wrong. it just paints its fallback and shuts up. so we tell ourselves.
 #include <QQuickFramebufferObject>
 #include <QString>
 #include <QStringList>

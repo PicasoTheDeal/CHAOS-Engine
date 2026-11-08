@@ -88,7 +88,7 @@ static void rollInto(App& a, const Seed32& seed, int forcedShape, float forcedMo
     a.bootStart = glfwGetTime();
     a.firstFrameAt = a.bootShown ? glfwGetTime() - 2.0 : -1;      // after the first boot the poster is already faded: no sheet over a roll or a load
     auto stage = [&](const char* key, const char* headline, const std::string& detail) { a.boot.push_back({ key, headline, detail, glfwGetTime() }); };
-    stage("seed", "SEEDED", toShortHex(seed) + "…  /  " + (a.hasTicket ? "ticketed" : "preview"));
+    stage("seed", "SEEDED", toShortHex(seed) + "...  /  " + (a.hasTicket ? "ticketed" : "preview"));
     a.renderer.reset();
     a.dim = std::make_unique<Dimension>(rollDimension(seed, forcedShape, forcedMood));
     Dimension& d = *a.dim;
@@ -325,7 +325,8 @@ int main(int argc, char** argv) {
         }
         if (app.reqSetDesktop) {
             app.reqSetDesktop = false;
-            // kde: tell plasmashell to use the plugin on every desktop with this seed. qdbus6, qdbus or gdbus, whichever is there
+            // kde: tell plasmashell to use the plugin on every desktop with this seed. busctl first, then qdbus6 / qdbus / gdbus, whichever is there.
+            // the js is double quotes only: single quotes inside a single quoted shell arg gave every tool garbage and no error, fun afternoon
             std::string hex = toHex(app.dim->seed), regUrl = app.registryUrl, modelPathSafe = app.persisted.modelPath;
             for (char& ch : regUrl) if (ch == '\'' || ch == '"' || ch == '\\') ch = '_';
             for (char& ch : modelPathSafe) if (ch == '\'' || ch == '"' || ch == '\\') ch = '_';     // a url never needs these; the script must stay well formed

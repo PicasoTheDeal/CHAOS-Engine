@@ -1,17 +1,17 @@
 # CHAOS engine, client
 
-C++20 / OpenGL 4.3 core / GLFW 3.4. See `../Design map` for why.
+c++20 / opengl 4.3 core / glfw 3.4 (3.3 builds too, x11 only there). `../Design map` for the why, `../Data and logic flow` for the how.
 
-## Build
+## build
 
-Debian/Ubuntu packages:
+debian / ubuntu / kali:
 
 ```
 sudo apt install build-essential cmake ninja-build pkg-config libglfw3-dev libglm-dev libsodium-dev libssl-dev \
-  libfreetype-dev libsecret-1-dev libcurl4-openssl-dev libargon2-dev catch2 nlohmann-json3-dev libspdlog-dev libwayland-dev libegl-dev
+  libcurl4-openssl-dev catch2 nlohmann-json3-dev libwayland-dev libegl-dev libx11-dev libxext-dev libxrandr-dev libgl-dev
 ```
 
-Arch: `glfw glm libsodium openssl freetype2 libsecret curl argon2 catch2 nlohmann-json spdlog cmake ninja libx11 libxext wayland libglvnd`.
+arch: `glfw glm libsodium openssl curl catch2 nlohmann-json cmake ninja libx11 libxext wayland libglvnd`. fedora names aer in the root readme.
 
 ```
 cmake -S client -B client/build -G Ninja -DCMAKE_BUILD_TYPE=Release
@@ -19,52 +19,51 @@ cmake --build client/build
 ./client/build/chaos_tests
 ./client/build/chaos                          # random seed
 ./client/build/chaos --seed <64 hex | base58 | 24 words>   # replay a seed
-./client/build/chaos --seed <hex> --shot out.png   # 1920x1080 offscreen preview, no window
+./client/build/chaos --seed <hex> --shot out.png   # 1920x1080 offscreen frame, no window
 ./client/build/chaos --shape 27 --mood 0.9        # force a generator (see --list-shapes) and pin the mood
 ./client/build/chaos --mode bleed                 # show a mode other than the seed's native one
 ./client/build/chaos --seed <x> --shot p.png --keep   # also write the .chaos + png into the vault
 ./client/build/chaos --vault                      # list the vault, each file verified against the registry key
 ./client/build/chaos --verify f.chaos             # check one file
 ./client/build/chaos --import f.chaos             # verify + store (a claimed file coming back from the registry)
-./client/build/chaos --commit out.reveal                       # step 1 of a claimable roll: prints the commit for the ticket request
+./client/build/chaos --commit out.reveal                       # step 1 of a claimable roll by hand: prints the commit
 ./client/build/chaos --ticket t.ticket --reveal out.reveal --shot p.png --keep   # step 2: the seed derives from ticket + reveal
 ```
 
-Seeds: all 32 bytes drive the picture; hex, base58 and 24 bip39 words are the same seed. Keys: M cycles mood, N cycles mode, 1-4 set a mode, K keeps the frame to the vault, Esc quits.
+seeds: all 32 bytes drive the picture, hex, base58 and the 24 bip39 words aer the same seed. keys: Esc panel, R preview roll, K keep, M mood, N mode, 1-4 set a mode, Space pause, F fullscreen, Ctrl+Q quit.
 
-Vendored in `third_party/`: glad2 (generated, gl core 4.3), BLAKE3 portable C, stb, Dear ImGui.
+vendored in `third_party/`: glad2 (generated, gl core 4.3), blake3 portable c, stb, dear imgui (only the files the panel uses, see the VENDORED note in there).
 
-## Layout
+## layout
 
 ```
-src/platform   window + context (glfw)
-src/render     shader loader (#include <file> supported), VAO/VBO mesh
+src/seed       splitmix64, xoshiro256**, blake3 sub streams, base58, bip39, rarity + families
 src/shape      three.js geometry equivalents, 41 generators, mutation lineage
-src/scene      dimension roll (everything one seed decides), palette, mood
-src/render     also post stack (bloom, duotone, film, afterimage) and the renderer
-src/seed       splitmix64, xoshiro256**, blake3 sub-streams, base58, bip39, rarity + families
-src/vault      local vault, instance id
-src/chaos_file .chaos read/write/derive/verify/sign
-src/ui         imgui panel, boot poster, thumbnails
-src/platform   window, x11 wallpaper hints, pause probes
-src/wallpaper  the --wallpaper loop; src/settings settings.json + autostart
-tools/         chaos-registry-dev
-src/util       png screenshot
-shaders/       GLSL 430 ports of the reference three.js shaders
+src/scene      dimension roll (everything one seed decides), palette, mood, modes, props the registry derives
+src/render     shader loader (#include <file> supported), gl mesh, post stack, the renderer
+src/model      .cheng: import (obj / stl / gltf / glb / blender), clean, pack, read
+src/chaos_file .chaos read / write / derive / verify / sign
+src/vault      local vault, activation list, instance id
+src/sync       registry api client (libcurl), roll / claim / sync flows
+src/ui         imgui panel, boot poster, the mark, thumbnails
+src/platform   window (glfw), x11 wallpaper hints, wayland layer shell, battery
+src/wallpaper  the --wallpaper loop, src/wallpaper_seed the seed rule, src/settings settings.json
+src/cli        every flag that isn't the window
+plasma/        the kde plasma 6 wallpaper plugin (qml module + package)
+tools/         chaos-registry-dev (the registry's half in c++, for local play), chaos-vectors
+shaders/       glsl 430 ports of the three.js shaders + the new ones (own, blit, bloom_duotone)
 tests/         catch2
 ```
 
-## If startup hangs on Wayland
+## if startup hangs on wayland
 
-GLFW loads libdecor for client-side decorations, and libdecor's GTK plugin can block forever in a container or a
-stripped session. `chaos --no-libdecor` skips it (KDE decorates server side anyway), or `LIBDECOR_PLUGIN_DIR=/nonexistent chaos`.
-`chaos --x11` runs the normal window through XWayland instead.
+glfw loads libdecor for client side decorations and libdecor's gtk plugin can block forever in a container or a stripped session. yes forever. `chaos --no-libdecor` skips it (kde decorates server side anyway), or `LIBDECOR_PLUGIN_DIR=/nonexistent chaos`. `chaos --x11` runs the normal window through xwayland instead.
 
-## Packaging (v1.1)
+## packaging
 
 ```
 cmake --install client/build --prefix /usr/local        # bin/chaos, share/chaos/{shaders,assets}, .desktop, icon
-(cd client/build && cpack -G "DEB;RPM;TGZ")             # chaos-engine_1.1.0_amd64.deb, chaos-engine-1.1.0.x86_64.rpm, .tar.gz (rpm needs rpmbuild)
+(cd client/build && cpack -G "DEB;RPM;TGZ")             # chaos-engine_1.1.0_amd64.deb, chaos-engine-1.1.0-1.x86_64.rpm, .tar.gz (rpm needs rpmbuild)
 packaging/build-appimage.sh                             # dist/CHAOS-x86_64.AppImage (downloads linuxdeploy + appimagetool once)
 packaging/build-portable.sh                             # all of the above inside debian bookworm (podman / docker): runs on old glibc, no plasma plugin
 packaging/build-arch.sh                                 # arch package from this tree, plasma plugin in, no git needed
@@ -72,129 +71,73 @@ makepkg -si -p packaging/PKGBUILD                       # arch, from the git tre
 chaos --version
 ```
 
-The binary finds its shaders and assets next to itself, under `../share/chaos`, or at the build-time path, so the
-same build runs from the tree, a prefix, the .deb or the AppImage. Packages built on this machine link against this
-machine's glibc, so for other distros build them in the bookworm container.
+the binary finds its shaders and assets next to itself, under `../share/chaos`, or at the build time path, so the same build runs from the tree, a prefix, the .deb or the appimage. packages built on this machine link against this machine's glibc, so for other distros build them in the bookworm container or they just won't install, learned that one the hard way.
 
-## Registry session (v1.0)
+## registry session
 
 ```
 ./client/build/chaos --login-token <token>     # from <registry>/login?app=1 (or --login-dev NAME on a dev registry)
 ./client/build/chaos --whoami
 ./client/build/chaos --roll --shot p.png --keep  # claimable roll in one go: commit, ticket, seed
 ./client/build/chaos --claim ~/.local/share/chaos/vault/<short>.chaos
-./client/build/chaos --sync                      # states for what you hold, fetch what you own but do not hold
+./client/build/chaos --sync                      # states for what you hold, fetch what you own but don't hold
 ./client/build/chaos --logout
 ```
 
-The panel's account tab does the same: open the sign-in page, paste the token, connect, sync. The roll tab gets a
-one-button claimable roll and a claim button once connected.
+the panel's account tab does the same: open the sign in page, paste the token, connect, sync. the setup tab has the whole thing as 4 big keys.
 
-## Online rule
+## online rule
 
-The app pings the registry at start (`--registry URL`, `CHAOS_REGISTRY`, or `registry_url` in settings.json; default
-https://chaos-eng.tetstack.dev). Online: everything, and loading a vault file (`--import`, or load in the panel)
-asks the registry and records the answer in `~/.local/share/chaos/activated.json`. Offline: nothing is generated
-(no previews, rerolls, tickets, or arbitrary `--seed`); only activated files load, and wallpaper mode plays an
-activated seed. `--dev-offline` lifts the gate for development. Needs libcurl.
+the app pings the registry at start and every 30 s (`--registry URL`, `CHAOS_REGISTRY`, or `registry_url` in settings.json, default https://chaos-eng.tetstack.dev). nothing generates without an account, previews included. online and signed in: everything, and loading a vault file asks the registry and records the answer in `activated.json`. offline: only what's in your vault or activated plays, no previews, no rerolls, no arbitrary `--seed`. `--dev-offline` lifts the gate for development. needs libcurl.
 
-## KDE Plasma: as a real wallpaper option
+## kde plasma, as a real wallpaper option
 
-On KDE the layer-shell window lands in the same layer as Plasma's own desktop and covers it (icons and widgets
-included). The Plasma wallpaper plugin renders the engine inside plasmashell instead, and shows up in
-Desktop settings as a wallpaper type called CHAOS.
+on kde the layer shell window lands in the same layer as plasma's own desktop and covers it, icons and widgets included. so there's a plasma wallpaper plugin that renders the engine inside plasmashell and shows up in desktop settings as wallpaper type CHAOS.
 
 ```
-sudo pacman -S --needed qt6-base qt6-declarative kirigami
+sudo pacman -S --needed qt6-base qt6-declarative plasma-workspace extra-cmake-modules
 cmake -S client -B client/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DCHAOS_PLASMA=ON
 cmake --build client/build
 sudo cmake --install client/build        # chaos, shaders + assets to /usr/share/chaos, the qml module, the wallpaper package
 kquitapp6 plasmashell; kstart plasmashell   # or log out and in
 ```
 
-Or, from the app: view tab (or the setup tab), "set as desktop wallpaper" switches every desktop to the plugin with
-the current seed through plasmashell's scripting interface (needs qdbus6, qdbus or gdbus).
+or from the app: "set as desktop wallpaper" (setup or view tab) switches every desktop to the plugin with the current seed and your model through plasmashell's scripting interface.
 
-Then right-click the desktop, Configure Desktop and Wallpaper, Wallpaper type: CHAOS. The settings page has a vault
-picker, seed, mode, what to draw (everything / no satellites / the main shape alone), fps (50 and above locks to the
-display refresh, 30 is the light option), render size (full / 3/4 / half, the easy win on 4K), registry and battery
-pause, "pause under a fullscreen window (games), slow under a maximised one", your model, plus a live status line. Draw and size are this screen's choice only; the chaos, its value and its
-certificate do not change. It shares the app's vault and
-activation list, so the same online rule applies: empty seed = random while the registry is reachable, otherwise an
-activated or kept one (offline, anything in your vault plays; only generating needs the registry). When nothing may
-play (offline with an empty vault, registry unset, bad seed) it draws the lobby,
-one fixed public seed, instead of a black desktop. Everything the wallpaper reports also lands in
-`~/.cache/chaos/plasma.log`, so if the desktop looks wrong:
+then right click the desktop, configure desktop and wallpaper, wallpaper type CHAOS. the settings page has a vault picker, seed, mode, draw (everything / no satellites / main shape alone), fps (50 and up locks to the display refresh, 30 is the light one), render size (3/4 by default, the easy win on 4k), anti aliasing, lite, battery pause, pause under a fullscreen window and slow under a maximised one (off by default), your model and its skin, the registry, and a live status line. everything it says also lands in the log, so if the desktop looks wrong:
 
 ```
 tail -n 20 ~/.cache/chaos/plasma.log
 ```
 
-If the plugin does not appear at all or the desktop stays plain black with nothing in the log, plasmashell could not
-load the module; `journalctl --user -u plasma-plasmashell.service -b | grep -i chaos` says why. The plugin links
-with `--no-undefined`, so a missing symbol fails the build instead.
+if the plugin doesn't appear at all or the desktop stays plain black with nothing in the log, plasmashell could not load the module, `journalctl --user -u plasma-plasmashell.service -b | grep -i chaos` says why. the plugin links with `--no-undefined` so a missing symbol fails the build instead of a silent black desktop (been there).
 
-## Where the files are
+## where the files are
 
-Every kept roll, claim and sync lands in the vault folder as `<seed>.chaos` plus a `.png`. The default is
-`~/.local/share/chaos/vault`; the account tab lets you choose any folder (saved as `vault_dir` in settings.json) and
-the wallpaper plugin reads the same one.
+every kept roll, claim and sync lands in your vault folder as `<seed>.chaos` + `.png`. default `~/.local/share/chaos/vault`, the account tab lets you pick any folder (`vault_dir` in settings.json) and the plugin reads the same one. converted models go in `models/` next to it.
 
-## Rolling needs an account
+## your own model on the stage (.cheng)
 
-Nothing is generated without a session, previews included. Sign in at `<registry>/login?app=1`, paste the token on
-the account tab (or `chaos --login-token <token>`), then roll. Claimable rolls are one per week per account. Files
-already in your vault play without a session; the lobby plays when nothing else may.
+the model tab (or `chaos --cheng file`) turns an `.obj`, `.stl`, `.gltf` or `.glb` (and `.blend`, `.fbx`, `.dae`, `.step`, `.usd` through blender when it's installed) into a `.cheng`: welded with its seams kept, thinned only past 120k vertices, sized for the stage. materials come along: base colours, vertex colours, roughness / metal / glow and one base colour texture (the one covering most of the model, halved till it fits 1024, stored as a png inside the file). a model with several materials keeps them as vertex colours. on the stage it replaces the main shape and the satellites go. skin own (what it brought), berry (a seed's skin, pick which seed with "look from"), mono, wire, or random. the duotone leaves a model wearing its own look alone so your textures keep their colours while the backdrop stays the seed's. a display choice, offline, never a seed. `chaos --model file` shows one, the plasma wallpaper carries it when you press "set as desktop wallpaper".
 
-## Your own model on the stage (.cheng)
+## measuring
 
-The model tab (or `chaos --cheng file`) turns an `.obj`, `.stl`, `.gltf` or `.glb` (and `.blend`, `.fbx`, `.dae`,
-`.step`, `.usd` through blender when it is installed) into a `.cheng`: welded with its seams kept, thinned only past 120k vertices, sized for the stage. Materials come along: base colours, vertex colours, roughness / metal / glow and one base-colour texture (the one covering most of the model, halved until it fits 1024, stored as a png inside the file). A model with several materials keeps them as vertex colours. On the stage it replaces the main shape and the satellites go; skin own (what it brought), berry / mono / wire or
-random, one colour of your choice. The duotone leaves a model wearing its own look alone, so your textures keep their colours while the backdrop stays the seed's. A display choice, offline, never a seed. `chaos --model file` shows one; the
-Plasma wallpaper carries it when you press "set as desktop wallpaper".
+`chaos --bench 120` renders 120 frames offscreen at 1080p with the saved quality settings and prints the time per frame and the memory used. `CHAOS_PROFILE=1 chaos --bench 120` adds the gpu time of every pass.
 
-## Measuring
+## display settings (the app, the wallpaper and the plugin)
 
-`chaos --bench 120` renders 120 frames offscreen at 1080p with the saved quality settings and prints the time per
-frame and the memory used. `CHAOS_PROFILE=1 chaos --bench 120` adds the GPU time of every pass.
+the prefs tab has a display section: draw (everything / no satellites / main shape alone), render size (full / 3/4 / half), anti aliasing (off / 2x / 4x) and detail (full / lite). this install's choice, changes nothing about a seed, its value or its cert. if it lags press "low-end preset" (60% size, no aa, lite, no satellites, 30 fps). the keys live in settings.json (`layers`, `render_scale`, `msaa`, `detail`) and wallpaper mode reads the same ones, the plugin has them on its page.
 
-## Display settings (the app, the wallpaper and the plugin)
+## wallpaper backends
 
-The settings tab has a display section: draw (everything / no satellites / the main shape alone), render size
-(full / 3/4 / half) and anti-aliasing (off / 2x / 4x) and detail (full / lite). They are this install's choice and change nothing about a
-seed, its value or its certificate. If the app lags, press "low-end preset" (60% size, no anti-aliasing, lite detail, no satellites, 30 fps). The keys live in
-`~/.config/chaos/settings.json` (`layers`, `render_scale`, `msaa`) and wallpaper mode reads the same ones; the
-Plasma plugin has the same three on its settings page.
+`chaos --wallpaper` picks the wayland layer shell when the compositor has it (sway, hyprland, river, kwin), otherwise the x11 desktop window (xwayland under a wayland session). `--backend wayland|x11` forces one. `--monitors mirror|each`, `--wallpaper-fps N`, `--frames N` (testing), `--no-pause`. no fullscreen app pause on the wayland path (compositors don't tell you), battery pause on both, both off by default.
 
-## Wallpaper backends (v1.2)
+## the .chaos flow by hand (the dev tool)
 
-`chaos --wallpaper` picks the native Wayland layer shell when the compositor offers it (KDE, sway, Hyprland, river),
-otherwise the X11 desktop-window path (XWayland under a Wayland session). `--backend wayland|x11` forces one.
-No fullscreen-app pause on the Wayland path; battery pause works on both.
-
-## v0.7 status
-
-Wallpaper mode: `chaos --wallpaper` forces X11 (XWayland under a Wayland session) and puts one desktop-layer window
-per monitor (`_NET_WM_WINDOW_TYPE_DESKTOP`, below, sticky, no input). `--monitors mirror|each`, `--wallpaper-fps N`,
-`--frames N` (testing), `--no-pause`. Pauses when the active window is fullscreen or the machine is on battery.
-Reads `~/.config/chaos/settings.json` (edited from the panel's settings tab, which also toggles XDG autostart).
-Arch needs `libx11 libxext nlohmann-json` on top of the earlier list.
-
-## v0.6 status
-
-Dear ImGui control panel (Esc): vault with thumbnails and verification, roll (preview / claimable from a ticket /
-any seed form), view (seed forms with copy, lineage, mood slider, mode, palette), settings (vsync, fps cap, pause,
-monitor, fullscreen, poster), account (placeholders for v1.0). Boot poster with the real build stages and the web
-fonts (converted to ttf in `assets/fonts`). Keys: Esc panel, R reroll, K keep, M mood, N mode, 1-4 mode, Space pause,
-F fullscreen, Ctrl+Q quit. `--no-panel`, `--no-poster`, `--ui-shot out.png` (hidden-window screenshot with the UI).
-
-## v0.5 status
-
-The .chaos flow: read, write, seed derivation from a registry ticket, offline verification of ticket and cert
-signatures (ed25519, libsodium) against the embedded registry public key. `chaos-registry-dev` is the server's half
-(keygen, ticket, claim, transfer, verify) with a flat text db, so the whole claim and transfer loop can be run locally:
+`chaos-registry-dev` is the registry's half in c++ (keygen, ticket, claim, transfer, verify) with a flat text db, so the whole claim and transfer loop runs locally:
 
 ```
+client/build/chaos-registry-dev keygen --key server/dev/server.key   # once, leave --pub off
 client/build/chaos --commit out.reveal                 # prints COMMIT
 client/build/chaos-registry-dev ticket --db r.db --user 7 --commit COMMIT --out t.ticket
 client/build/chaos --ticket t.ticket --reveal out.reveal --shot p.png --keep
@@ -203,25 +146,8 @@ client/build/chaos --import claimed.chaos
 client/build/chaos-registry-dev transfer --db r.db --in claimed.chaos --to 9 --out theirs.chaos
 ```
 
-The dev key `server/dev/server.key` is not in the repo: `chaos-registry-dev keygen --key server/dev/server.key` makes one for local play. It is not the production key and nothing built with the production key trusts it.
+the dev key is not the production key and nothing built with the production key trusts it.
 
-## v0.4 status
+## history, short
 
-Seed forms (base58, 24-word bip39), rarity tiers rolled on their own stream with visual unlocks (extra lineage, berry
-satellites, a second berry, a third duotone stop, forced compound, bleed, doubled rings, gold), the 16 family buckets,
-the local vault (`~/.local/share/chaos/vault`, preview-state .chaos + png) and a per-install instance id.
-Needs libcrypto (OpenSSL) for the bip39 checksum and libsodium for ed25519.
-
-## v0.3 status
-
-Modes: every seed rolls a native mode (zen / calm / chaos / bleed, 20/35/35/10). The display mode can be overridden
-locally; the native one is what the registry values. Zen pins the mood to 0, stops palette jumps and the mutation
-clock, and hides the swarm. Calm caps the mood and never hard-cuts. Bleed pins wild, hard-cuts 60% of the time,
-holds the afterimage at 0.96 and adds a chromatic smear pass.
-
-## v0.2 status
-
-The full reference scene: 41 shape generators, mutation lineage, berry skin, hyperspace backdrop, wire ghost,
-satellites (berry or glitch), fold planes, debris, particles, rings, mood engine, palette jumps, mutation clock,
-and the post stack (bloom, duotone, film, afterimage) with 4x MSAA. Not ported: shadow maps, orbit controls.
-
+v0.1 window + one shape. v0.2 the full scene. v0.3 modes. v0.4 seed forms, rarity, vault. v0.5 the .chaos file and the dev registry tool. v0.6 the imgui panel + poster. v0.7 x11 wallpaper. v0.8 / v0.9 the registry. v1.0 sessions + sync. v1.1 packaging. v1.2 wayland layer shell + the plasma plugin. v1.3 market polish, previews, config. v1.4 the kde pass (the look, perf, setup tab, .cheng, docs on the site). v1.5 packages per distro for the testers. the long version is in the design map, section 16.

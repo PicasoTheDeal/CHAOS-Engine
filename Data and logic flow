@@ -1,4 +1,4 @@
-Data and logic flow. how each thing is done, who holds what, and what trusts what. 2026-11-05.
+Data and logic flow. how each thing is done, who holds what, and what trusts what. 2026-11-05, kept up to 2026-11-08.
 
 companion to "Design map" (why) and the code (how, exactly). this is the in-between: the flows, the files, the tables, the rules.
 
@@ -6,12 +6,12 @@ companion to "Design map" (why) and the code (how, exactly). this is the in-betw
 
     the app (client/, c++). renders. rolls. holds files. trusts only the registry's public key.
 
-    the registry (CHAOS/, sveltekit on cloudflare). keeps the books: who owns which seed, what it is worth, which copy is current. holds the only private key. derives everything itself, trusts nothing the app wrote.
+    the registry (its own private repo, sveltekit on cloudflare). keeps the books: who owns which seed, what it is worth, which copy is current. holds the only private key. derives everything itself, trusts nothing the app wrote.
 
-    the file (.chaos, 512 bytes). a receipt and a claim ticket. carries the seed, the ticket, the cert. never the truth, only evidence.
+    the file (.chaos, 512 bytes). a receipt and a claim ticket. carries the seed, the ticket, the cert. it's evidence, the registry row is the truth.
 
     rule of thumb: the app can be reverse engineered, so nothing the app does is a security boundary. the registry is the boundary. the app gates (offline rule, previews) are policy for honest users, not walls.
-    at the boundary: hooks.server.ts runs first (honeypot traps -> decoy + flag; flagged addresses refused on ticket / claim / list / acquire / revoke / sign-in; security headers), then every body passes src/lib/server/input.ts (sizes, exact shapes) before any registry call. CHAOS/src/lib/server/honeypot.ts, input.ts, migrations/0002_flags.sql, static/robots.txt.
+    at the boundary (registry repo): hooks.server.ts runs first (honeypot traps -> decoy + flag, flagged addresses refused on ticket / claim / list / acquire / revoke / sign in, origin check on cookie writes, rate budget, security headers + csp), then every body passes src/lib/server/input.ts (sizes, exact shapes) before any registry call. honeypot.ts, input.ts, ratelimit.ts, migrations/0002_flags.sql, static/robots.txt.
 
 1. a seed, start to pixels
 
@@ -29,7 +29,7 @@ companion to "Design map" (why) and the code (how, exactly). this is the in-betw
 
     steps 1..3 are all the registry ever needs (tier, mode, family). it runs exactly those, through the same code shape, and the vectors prove the ts and the c++ agree.
 
-    frame (client/src/render/renderer.cpp): dimension.update (mood ease, mutation clock, palette schedule) -> backdrop dome -> main berry -> satellites -> rings, debris, planes -> wire ghost -> particles -> post (bloom -> duotone -> smear if bleed -> film -> afterimage) -> target.
+    frame (client/src/render/renderer.cpp): dimension.update (mood ease, mutation clock, palette schedule) -> main berry (or your model) -> satellites -> rings, debris, planes -> backdrop dome (after the opaque stuff, depth test on, so nothing under a berry gets shaded) -> wire ghost -> particles -> post (bright -> 5 blur mips -> bloom + duotone in one pass -> smear if bleed -> afterimage with the film grain in it) -> target. a model wearing its own textures writes alpha 0 and the duotone leaves those pixels their real colour.
 
     mode is a preset over this: zen pins mood 0, no jumps, no mutation, no swarm. calm caps mood. chaos is the roll. bleed pins wild, hard cuts, long afterimage, smear.
 
@@ -48,7 +48,7 @@ companion to "Design map" (why) and the code (how, exactly). this is the in-betw
     claimable (online, commit-reveal):
 
         a. app draws client_random (32), computes commit = blake3("CHAOS-COMMIT-v3" || client_random). `chaos --commit out.reveal` writes client_random, prints the commit.
-        b. app -> registry: POST /api/ticket { commit }. the registry checks the allowance (1/day, bank 14), draws server_random (32), signs ticket = { id(16), user, issued_ms, commit, server_random } with the private key, returns the 160 bytes, remembers the ticket id as issued and unused.
+        b. app -> registry: POST /api/ticket { commit }. the registry checks the allowance (1 a week, bank of 1), draws server_random (32), signs ticket = { id(16), user, issued_ms, commit, server_random } with the private key, returns the 160 bytes, remembers the ticket id as issued and unused.
         c. app: seed_full = blake3("CHAOS-SEED-v3" || ticket_id || server_random || client_random). rolls it. `chaos --ticket t --reveal out.reveal`. the app refuses a reveal whose commit is not the ticket's.
         d. the kept file: state rolled, seed, instance_id (metadata), client_random, the whole ticket.
 
@@ -69,7 +69,7 @@ companion to "Design map" (why) and the code (how, exactly). this is the in-betw
         ticket was issued here, unused, to this user
         seed not already in the seeds table
 
-    the claim may carry a preview png (the app shrinks its vault png to 640 wide first); the registry checks it is a png under PREVIEW_MAX_BYTES and keeps it in r2, served at GET /api/preview/:seed.
+    the claim may carry a preview png (the app shrinks its vault png to 640 wide first); the registry checks it is a png under PREVIEW_MAX_BYTES and keeps it in D1 (previews table, no r2), served at GET /api/preview/:seed.
 
     then it ignores what the file says about itself: deriveProps(seed) -> tier, family, mode, mutation_seed written over the file's bytes. owner_id, claimed_at, a fresh nonce (16), seed_display (base58), state claimed. cert_sig = ed25519("CHAOS-CERT-v3" || bytes 8..288). value from value.ts. rows: seeds (owner, props, value, state owned, nonce), files (the signed 512 bytes), ticket used.
 
@@ -79,7 +79,7 @@ companion to "Design map" (why) and the code (how, exactly). this is the in-betw
 
     list: owner -> POST /api/list { seed, price }. row state listed. unlist: DELETE /api/revoke/:seed. the owner can always pull the current signed bytes: GET /api/file/:seed.
 
-    acquire: buyer -> POST /api/acquire { seed }. the registry takes the stored bytes of that seed (never the buyer's upload), sets owner = buyer, claimed_at, a new nonce, re-signs the cert, stores the new bytes, row owner/nonce/state owned, transfers row (price recorded, money not collected until v1.3).
+    acquire: buyer -> POST /api/acquire { seed }. the registry takes the stored bytes of that seed (never the buyer's upload), sets owner = buyer, claimed_at, a new nonce, re-signs the cert, stores the new bytes, row owner/nonce/state owned, transfers row (price recorded, money not collected, that's v2.0).
 
     the seller still holds a file with a real signature. offline it verifies. POST /api/check says: known, owner = buyer, this copy STALE (nonce mismatch). the app's sync (v1.0) marks it transferred. copying a file never moved anything: only this flow moves ownership.
 
@@ -124,16 +124,19 @@ companion to "Design map" (why) and the code (how, exactly). this is the in-betw
 
 9. wallpaper mode
 
-    `chaos --wallpaper`: forces x11 (xwayland on wayland), one desktop-type window per monitor (_NET_WM_WINDOW_TYPE_DESKTOP, below, sticky, no input region), own gl context and renderer each. seed from flags, else settings.json, else random (online) or an activated one (offline). fps cap (30), pause when the active window is fullscreen or on battery (polled every 0.5 s). no panel, no keys: drive it from the normal window's settings tab and restart. autostart is an xdg .desktop entry.
+    `chaos --wallpaper`: the wayland layer shell when the compositor has it (sway, hyprland, river, kwin), else x11 (xwayland on wayland) with one desktop type window per monitor (_NET_WM_WINDOW_TYPE_DESKTOP, below, sticky, no input region). own gl context and renderer each. seed from flags, else settings.json, else the seed rule in client/src/wallpaper_seed.cpp (random online, offline: activated, then newest kept, else nothing). fps cap (30), pause on battery / under a fullscreen window (x11 only, both opt in). no panel, no keys: drive it from the app and restart. on kde use the plasma plugin instead, the layer shell lands on top of plasma's own desktop.
+
+    the plasma plugin (client/plasma): same renderer inside plasmashell's gl context. same seed rule plus the lobby (one fixed public seed, blake3("CHAOS-LOBBY-v1")) when nothing may play, so the desktop is never black. everything it says goes to ~/.cache/chaos/plasma.log. the app's "set as desktop wallpaper" writes Seed / Registry / Model* into every desktop's config through plasmashell's scripting interface (busctl, else qdbus6 / qdbus / gdbus).
 
 10. what lives where
 
     app, per install
         ~/.config/chaos/instance            16 random bytes, in every file, metadata (bannable, never hashed)
-        ~/.config/chaos/settings.json       seed, mode, monitors, wallpaper_fps, pauses, vsync, fps_cap, poster, registry_url
-        ~/.config/autostart/chaos.desktop   when autostart is on
-        ~/.local/share/chaos/vault/<short>.chaos + .png
+        ~/.config/chaos/settings.json       seed, mode, monitors, wallpaper_fps, pauses (all off by default), vsync, fps_cap, poster, theme, registry_url, vault_dir, layers / render_scale / msaa / detail, model_on / model_path / model_skin / model_color / model_skin_seed
+        <vault_dir>/<short>.chaos + .png     default ~/.local/share/chaos/vault, you pick it on the account tab
+        <vault_dir>/../models/*.cheng        your converted models
         ~/.local/share/chaos/activated.json
+        ~/.cache/chaos/plasma.log           what the plugin said
         ~/.config/chaos/session             the registry session jwt, 0600
         shipped in the binary: the registry public key (shared/server_pubkey.h). nothing secret.
 
@@ -143,7 +146,9 @@ companion to "Design map" (why) and the code (how, exactly). this is the in-betw
         seeds      seed_hex, owner_id, family, tier, mode, rarity_score, value_cents, state, nonce_hex, price_cents, claimed_ms, updated_ms
         files      seed_hex, bytes (the current signed 512)
         transfers  id, seed_hex, from_user, to_user, price_cents, state, created_ms
-        secrets: CHAOS_SERVER_KEY (the private key), SESSION_SECRET, GOOGLE_CLIENT_ID
+        previews   seed_hex, png (under 900 KB, D1 rows cap at 1 MB)
+        flags      ip, until_ms (the honeypot)
+        secrets (cloudflare dashboard only): CHAOS_SERVER_KEY (the private key), SESSION_SECRET, GOOGLE_CLIENT_ID
 
     the file (shared/chaos_format.h, v3)
         0    magic, version, state
@@ -161,7 +166,7 @@ companion to "Design map" (why) and the code (how, exactly). this is the in-betw
 
 12. value and config
 
-    rarity is the seed's. value is the market's. value_cents = floor(tier) * family * mode * age * supply, in CHAOS/src/lib/server/value.ts. the numbers (floors, multipliers, allowance, session, preview cap, page sizes, site name) come from CHAOS/src/lib/server/config.ts, which reads the environment: the cloudflare dashboard (variables + secrets) in production, the defaults locally. the app never knows these numbers; it asks /api/check. the client's own constants: CHAOS_REGISTRY_URL (cmake option), timeouts and the preview upload width/cap in client/src/sync/.
+    rarity is the seed's. value is the market's. value_cents = floor(tier) * family * mode * age * supply, in the registry's src/lib/server/value.ts. the numbers (floors, multipliers, allowance, session, preview cap, page sizes, site name) come from src/lib/server/config.ts, which reads the environment: the cloudflare dashboard (variables + secrets) in production, the defaults locally. the app never knows these numbers; it asks /api/check. the client's own constants: CHAOS_REGISTRY_URL (cmake option), timeouts and the preview upload width/cap in client/src/sync/.
 
 13. trust table
 
@@ -176,21 +181,22 @@ companion to "Design map" (why) and the code (how, exactly). this is the in-betw
     seed + rng + forms          client/src/seed/
     roll + scene + modes        client/src/scene/, client/src/shape/
     render + post               client/src/render/, client/shaders/
-    .chaos read/verify/sign     client/src/chaos_file/format.cpp         <->  CHAOS/src/lib/server/format.ts
-    registry rules              client/tools/registry_dev.cpp (dev)     <->  CHAOS/src/lib/server/registry.ts
-    props the registry derives  client/src/scene/props.cpp               <->  CHAOS/src/lib/server/props.ts, rng.ts
+    (registry paths below aer in the registry repo, private)
+    .chaos read/verify/sign     client/src/chaos_file/format.cpp         <->  registry src/lib/server/format.ts
+    registry rules              client/tools/registry_dev.cpp (dev)     <->  registry src/lib/server/registry.ts
+    props the registry derives  client/src/scene/props.cpp               <->  registry src/lib/server/props.ts, rng.ts
     vault, activation, settings client/src/vault/, client/src/settings.cpp
     registry api client         client/src/sync/api.cpp (health, check, session, me, ticket, claim, vault, sync, file), client/src/sync/session_flow.cpp (roll in one go, claim, sync)
     wallpaper                   client/src/wallpaper.cpp, client/src/platform/x11_wallpaper.cpp, client/src/platform/wl_layer.cpp
     wallpaper seed rule         client/src/wallpaper_seed.cpp (chaos_core: pickWallpaperSeed, lobbySeed), client/src/platform/power.cpp
-    registry env + bindings     CHAOS/src/env.ts (every variable, kit 3 defineEnvVars), CHAOS/src/lib/server/config.ts ($app/env/private by key), context.ts (D1 via cloudflare:workers env)
+    registry env + bindings     registry src/env.ts (every variable, kit 3 defineEnvVars), src/lib/server/config.ts ($app/env/private by key), context.ts (D1 via cloudflare:workers env)
     panel + poster              client/src/ui/panel.cpp (imgui, the site's tokens in tk::, helpers lbl / h2 / tag / key / msg)
     draw layers + quality       client/src/render/renderer.h (Layers: satellites / swarm / particles; Quality: scale + msaa. display choices, never part of the seed), settings.json keys layers / render_scale / msaa
     your model (.cheng)         client/src/model/cheng.cpp (import with materials, prepare, write / read v2: uvs, colours, material, png texture, modelsDir), shape/parametric.h Mesh + Material, scene/dimension.cpp applyModel, renderer mono / wire / own skins (own.vert / own.frag, post true colour mode), settings model_*, panel tabModel, cli --cheng / --model, plugin Model* config + chaositem.cpp
     covered desktop             client/plasma/package/contents/ui/Coverage.qml (TasksModel -> coverage 0/1/2), ChaosView::setCoverage / repace
-    the mark                    client/src/ui/mark.h (16x16 bitmap; window icon, panel brand), CHAOS/static/favicon.svg, packaging/chaos.svg (generated from the same rows)
+    the mark                    client/src/ui/mark.h (16x16 bitmap; window icon, panel brand), registry static/favicon.svg, packaging/chaos.svg (generated from the same rows)
     plasma plugin               client/plasma/chaositem.cpp (ChaosView fbo item, FboRenderer, vsync or timer pacing, scaled fbo, status bus -> ~/.cache/chaos/plasma.log, ChaosVault singleton for the settings page), client/plasma/package/
-    panel + poster              client/src/ui/
-    http routes                 CHAOS/src/routes/api/*/+server.ts
-    pages                       CHAOS/src/routes/*/+page.svelte (layout + theme in +layout.svelte, shared bits in src/lib/ui.ts)
-    cross-language proof        client/tools/vectors.cpp -> CHAOS/test/vectors -> vitest
+    packages                    packaging/build-portable.sh (bookworm container: deb, rpm, tgz, appimage), build-arch.sh (arch pkg with the plugin), build-appimage.sh, PKGBUILD
+    http routes                 registry src/routes/api/*/+server.ts
+    pages                       registry src/routes/*/+page.svelte (layout + theme in +layout.svelte, docs under routes/docs, shared bits in src/lib/ui.ts)
+    cross-language proof        client/tools/vectors.cpp -> registry test/vectors -> vitest
