@@ -9,3 +9,4 @@ dist/
 *.png
 *.ticket
 server/dev/registry.db
+server/dev/server.key

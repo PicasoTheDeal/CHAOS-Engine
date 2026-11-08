@@ -203,7 +203,7 @@ client/build/chaos --import claimed.chaos
 client/build/chaos-registry-dev transfer --db r.db --in claimed.chaos --to 9 --out theirs.chaos
 ```
 
-The dev key in `server/dev/server.key` is committed for tests and local play. It is not the production key.
+The dev key `server/dev/server.key` is not in the repo: `chaos-registry-dev keygen --key server/dev/server.key` makes one for local play. It is not the production key and nothing built with the production key trusts it.
 
 ## v0.4 status
 

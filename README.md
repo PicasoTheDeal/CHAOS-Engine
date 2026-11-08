@@ -78,6 +78,10 @@ The registry (the site) is a separate private repo, so there's nothing to run fo
 
 The why of everything is in `Design map`, the how in `Data and logic flow`, and both are on the site under docs too. `client/README.md` has the deps per distro and the details.
 
+## Licence, sort of
+
+The repo is public so people can read it and test it. It's not open source: don't ship it, fork it into something else or sell it. If you want to build on it, ask me first.
+
 ## Where things stand
 
 Everything through the registry, the plugin, the model pipeline and the docs is done and running. Next is v2.0: payments on the market (store credit first, then payouts), maybe global caps per tier so rarity holds no matter how many accounts there are, and binding an install to an account so multi-accounting doesn't leak rolls. The blockchain mirror idea is parked unless buyers ask for it.
