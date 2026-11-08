@@ -1,4 +1,4 @@
-Data and logic flow. how each thing is done, who holds what, and what trusts what. 2026-11-05, kept up to 2026-11-08.
+Data and logic flow. how each thing is done, who holds what, and what trusts what. 2026-10-28, kept up to 2026-11-08.
 
 companion to "Design map" (why) and the code (how, exactly). this is the in-between: the flows, the files, the tables, the rules.
 
@@ -117,8 +117,8 @@ companion to "Design map" (why) and the code (how, exactly). this is the in-betw
 
     online: everything. loading a vault file also calls POST /api/check and, if valid and known, writes ~/.local/share/chaos/activated.json { seed: { at, owner, state, current, value } }. that is the activation. `--import` does the same.
 
-    signup is a must (2026-11-06): the app generates nothing, previews included, without a session the registry accepts (App::canGenerate = devOffline || online && signed in; cli RegistryState::signedIn from a GET /api/me at start). without one it opens on a kept or activated seed, else the lobby, and says "sign in (account tab) to roll". claimable rolls: one per ROLL_PERIOD_DAYS (7) per account, BANK_MAX 1.
-    offline: no previews, no rerolls, no tickets, no replaying arbitrary seeds. allowed: loading a vault file whose seed is in activated.json, and wallpaper mode (app and plasma plugin, client/src/wallpaper_seed.cpp) on any seed kept in this install's vault or activated here; with no seed configured it plays the first activated one, else the newest kept one, else (plugin only) the lobby. relaxed 2026-11-06: showing again what this machine already rolled is not generation. the panel shows OFFLINE and the roll tab says why.
+    signup is a must (2026-11-01): the app generates nothing, previews included, without a session the registry accepts (App::canGenerate = devOffline || online && signed in; cli RegistryState::signedIn from a GET /api/me at start). without one it opens on a kept or activated seed, else the lobby, and says "sign in (account tab) to roll". claimable rolls: one per ROLL_PERIOD_DAYS (7) per account, BANK_MAX 1.
+    offline: no previews, no rerolls, no tickets, no replaying arbitrary seeds. allowed: loading a vault file whose seed is in activated.json, and wallpaper mode (app and plasma plugin, client/src/wallpaper_seed.cpp) on any seed kept in this install's vault or activated here; with no seed configured it plays the first activated one, else the newest kept one, else (plugin only) the lobby. relaxed 2026-11-01: showing again what this machine already rolled is not generation. the panel shows OFFLINE and the roll tab says why.
 
     `--dev-offline` lifts the gate for development. it exists because the gate is client code and a wall it is not: the registry is where the real limits live (tickets, one claim per seed, server-side rarity).
 
