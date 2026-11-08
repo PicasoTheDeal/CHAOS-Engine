@@ -62,17 +62,39 @@ It needs OpenGL 4.3. Intel from haswell up, any amd on mesa, nvidia on the propr
 
 ## Building it yourself
 
+No package for you yet, or you want the latest? Deps first:
+
+Kali / Debian / Ubuntu:
+
 ```
-cmake -S client -B client/build -G Ninja -DCMAKE_INSTALL_PREFIX=/usr -DCHAOS_PLASMA=ON
+sudo apt install build-essential cmake ninja-build pkg-config git libglfw3-dev libglm-dev libsodium-dev libssl-dev libcurl4-openssl-dev catch2 nlohmann-json3-dev libwayland-dev libegl-dev libx11-dev libxext-dev libgl-dev
+```
+
+Fedora:
+
+```
+sudo dnf install gcc-c++ cmake ninja-build pkgconf git glfw-devel glm-devel libsodium-devel openssl-devel libcurl-devel catch2-devel json-devel wayland-devel mesa-libEGL-devel libX11-devel libXext-devel mesa-libGL-devel
+```
+
+Garuda / Arch (add `qt6-declarative plasma-workspace extra-cmake-modules` for the Plasma plugin):
+
+```
+sudo pacman -S --needed base-devel cmake ninja git catch2 glm nlohmann-json glfw libsodium openssl curl libx11 libxext wayland libglvnd
+```
+
+Then, from the repo:
+
+```
+cmake -S client -B client/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
 cmake --build client/build && sudo cmake --install client/build
 chaos
 ```
 
-Deps per distro are in `client/README.md`. `-DCHAOS_PLASMA=ON` needs the Plasma 6 dev packages, leave it off if you don't have KDE.
+Add `-DCHAOS_PLASMA=ON` to the first line if you're on KDE Plasma 6 and installed its dev packages. Ubuntu 22.04 ships an old catch2, the tests just get skipped there, the app still builds.
 
 ## Making the packages
 
-`packaging/build-portable.sh` builds the .deb, .rpm, .tar.gz and the AppImage inside a debian bookworm container (podman or docker), so they run on old glibc too. `packaging/build-arch.sh` builds the arch package on an arch machine, plasma plugin included. Both drop into `dist/`.
+Push a tag and GitHub builds them all and puts them on the release page: `git tag v1.1.0 && git push origin v1.1.0` (`.github/workflows/release.yml`). By hand: `packaging/build-portable.sh` builds the .deb, .rpm, .tar.gz and the AppImage inside a debian bookworm container (podman or docker), so they run on old glibc too, and `packaging/build-arch.sh` builds the arch package on an arch machine, plasma plugin included. Both drop into `dist/`.
 
 The registry (the site) is a separate private repo, so there's nothing to run for it here. The app talks to the live one, and a client built with the production public key (`shared/server_pubkey.h`) only trusts that one.
 
