@@ -4,6 +4,7 @@ client/build-container/
 client/third_party/blake3_src/
 client/third_party/stb_src/
 dist/
+distro/
 
 # renders and tickets made while working
 *.png

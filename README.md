@@ -24,7 +24,7 @@ I had a web toy before (chaos.tetstack.dev, three.js) and this is the real thing
 
 ## Installing it
 
-Grab the file for your distro from the releases page (or the `distro/` folder, or whatever I sent you on telegram) and:
+Grab the file for your distro from the releases page (or whatever I sent you on telegram) and:
 
 **Kali / Debian / Ubuntu**
 
@@ -94,7 +94,7 @@ Add `-DCHAOS_PLASMA=ON` to the first line if you're on KDE Plasma 6 and installe
 
 ## Making the packages
 
-`packaging/build-portable.sh` builds the .deb, .rpm, .tar.gz and the AppImage inside a debian bookworm container (podman or docker), so they run on old glibc too, and `packaging/build-arch.sh` builds the arch package on an arch machine, plasma plugin included. Both drop into `dist/`. The ones I ship sit in `distro/` and on the releases page.
+`packaging/build-portable.sh` builds the .deb, .rpm, .tar.gz and the AppImage inside a debian bookworm container (podman or docker), so they run on old glibc too, and `packaging/build-arch.sh` builds the arch package on an arch machine, plasma plugin included. Both drop into `dist/`. The ones I ship go on the releases page, nothing built is in git.
 
 The registry (the site) is a separate private repo, so there's nothing to run for it here. The app talks to the live one, and a client built with the production public key (`shared/server_pubkey.h`) only trusts that one.
 
