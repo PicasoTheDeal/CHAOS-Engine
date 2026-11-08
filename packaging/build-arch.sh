@@ -30,6 +30,6 @@ build() {
 check() { ./build/chaos_tests; }
 package() { DESTDIR="\$pkgdir" cmake --install build; }
 PKG
-(cd "$WORK" && makepkg -f --noconfirm)
+(cd "$WORK" && makepkg -fs --noconfirm)      # -s: pacman installs any missing build dep (asks for sudo)
 cp "$WORK"/*.pkg.tar.zst "$ROOT/dist/"
 echo; echo "-> $(ls "$ROOT"/dist/*.pkg.tar.zst)"
