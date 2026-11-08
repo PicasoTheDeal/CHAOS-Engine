@@ -202,7 +202,7 @@ Why not zig... well best of two but too young for this project. And I barely kno
 
     why fixed odds and not a lottery on visuals: the server can enforce it from the seed alone, and a mythic is a mythic no matter whose screen it's on
 
-    how it landed: "rarity" sub stream rolled first, the tier feeds everything after it. the unlocks above are all in except the mythic-only family (reserved family 14, still the open question). the second berry is a different generator at 0.35 scale with its own skin on the "twin" stream, orbiting wide. the third stop makes the duotone a five stop ramp (A*0.05, A, C, B, B lifted). the 16 family buckets are in client/src/seed/rarity.cpp and as a comment table in shared/chaos_format.h, the server mirrors that table. the app prints tier, family and score at launch
+    done: "rarity" sub stream rolled first, the tier feeds everything after it. the unlocks above are all in except the mythic-only family (reserved family 14, still the open question). the second berry is a different generator at 0.35 scale with its own skin on the "twin" stream, orbiting wide. the third stop makes the duotone a five stop ramp (A*0.05, A, C, B, B lifted). the 16 family buckets are in client/src/seed/rarity.cpp and as a comment table in shared/chaos_format.h, the server mirrors that table. the app prints tier, family and score at launch
 
 9. modes (done, v0.3)
 
@@ -218,7 +218,7 @@ Why not zig... well best of two but too young for this project. And I barely kno
 
     the mode is a post/mood preset, not a different scene. same seed, same shape, same everything, just how much it moves
 
-    how it landed: native mode on its own "mode" sub stream. `--mode zen|calm|chaos|bleed` overrides the display, N cycles, 1-4 set it. the app prints "BLEED native, showing ZEN" so you always know what the seed really is. zen also hides the swarm (satellites, planes, debris, rings) and leaves the berry, the backdrop and the particles. a manual M press still wins over the preset, same as the web
+    done: native mode on its own "mode" sub stream. `--mode zen|calm|chaos|bleed` overrides the display, N cycles, 1-4 set it. the app prints "BLEED native, showing ZEN" so you always know what the seed really is. zen also hides the swarm (satellites, planes, debris, rings) and leaves the berry, the backdrop and the particles. a manual M press still wins over the preset, same as the web
 
     the smear: chromatic split along a slowly turning direction (never fully closed, bleed always bleeds a bit, 0.0015 at rest) that tears open with the kick (up to 0.0135), plus 7 taps dragged along the same line. sits between the duotone and the film grain. only built when the mode asks for it, zero cost otherwise
 
@@ -387,7 +387,7 @@ Why not zig... well best of two but too young for this project. And I barely kno
 
     hotkeys: M mood, R reroll preview, space pause, F fullscreen, esc panel. all rebindable later or never
 
-    how it landed: no docking branch in the vendored imgui, so it is a fixed 460px panel on the right with tabs, esc toggles it. vault tab lists every .chaos with its png thumbnail (stb_image -> gl texture), state, tier, family, mode, valid/INVALID, a load button. roll tab: preview roll, claimable roll from a .ticket path, load any seed form. view tab: hex / base58 / words with copy buttons (glfw clipboard), tier (gold text when gold), lineage, mood slider, mode combo, palette swatches, mutation bar. settings: vsync, fps cap, pause, monitor, fullscreen, poster toggle. account: greyed google + sync buttons (v1.0), instance id, registry key fingerprint, vault path
+    done: no docking branch in the vendored imgui, so it is a fixed 460px panel on the right with tabs, esc toggles it. vault tab lists every .chaos with its png thumbnail (stb_image -> gl texture), state, tier, family, mode, valid/INVALID, a load button. roll tab: preview roll, claimable roll from a .ticket path, load any seed form. view tab: hex / base58 / words with copy buttons (glfw clipboard), tier (gold text when gold), lineage, mood slider, mode combo, palette swatches, mutation bar. settings: vsync, fps cap, pause, monitor, fullscreen, poster toggle. account: greyed google + sync buttons (v1.0), instance id, registry key fingerprint, vault path
 
     the panel only sets requests (reroll, load, keep, fullscreen, quit), the main loop acts on them next frame. imgui's glfw backend chains to my key callback, and hotkeys are ignored while a text field has focus
 
@@ -403,7 +403,7 @@ Why not zig... well best of two but too young for this project. And I barely kno
 
     glfw gets patched for the layer shell surface, that is the whole reason glfw not sdl
 
-    how it landed (v1.2): no glfw patch after all, the wayland wallpaper is its own backend, client/src/platform/wl_layer.cpp. wl_display, registry, one wl_surface + zwlr_layer_surface_v1 per wl_output (layer background, anchored to all 4 edges, exclusive zone -1, no keyboard, size 0x0 so the compositor sizes it), one EGL gl 4.3 core context, a wl_egl_window per output, glad through eglGetProcAddress, swap interval 0 and our own pacing. buffer scale honoured. the 2 protocol xmls (wlr-layer-shell, and xdg-shell cuz it references it) aer vendored in client/third_party/wayland-protocols, wayland-scanner makes the glue at build time. `--backend auto|wayland|x11`, auto = layer shell when the compositor has it, else x11. tested on kwin: 1920x1080 background layer, 150 frames, clean exit
+    done (v1.2): no glfw patch after all, the wayland wallpaper is its own backend, client/src/platform/wl_layer.cpp. wl_display, registry, one wl_surface + zwlr_layer_surface_v1 per wl_output (layer background, anchored to all 4 edges, exclusive zone -1, no keyboard, size 0x0 so the compositor sizes it), one EGL gl 4.3 core context, a wl_egl_window per output, glad through eglGetProcAddress, swap interval 0 and our own pacing. buffer scale honoured. the 2 protocol xmls (wlr-layer-shell, and xdg-shell cuz it references it) aer vendored in client/third_party/wayland-protocols, wayland-scanner makes the glue at build time. `--backend auto|wayland|x11`, auto = layer shell when the compositor has it, else x11. tested on kwin: 1920x1080 background layer, 150 frames, clean exit
 
         no fullscreen-app pause on wayland: compositors do not tell clients what has focus. battery pause works. the x11 path keeps both
 
@@ -477,7 +477,7 @@ Why not zig... well best of two but too young for this project. And I barely kno
 
     multi monitor: one dimension per monitor or the same one mirrored, user picks
 
-    how it landed (v0.7): `chaos --wallpaper`. glfw is forced onto x11 (GLFW_PLATFORM_X11), so a wayland session goes through xwayland without asking. one undecorated, unfocusable window per glfw monitor at the monitor's position and size, created hidden, then via glfw3native + xlib: _NET_WM_WINDOW_TYPE_DESKTOP, _NET_WM_STATE below + sticky + skip taskbar + skip pager, _NET_WM_DESKTOP all, WM_HINTS input False, empty XShape input region. then shown. verified with xprop on kwin's xwayland: desktop type, below, no focus, 1920x1080+0+0, bottom of _NET_CLIENT_LIST_STACKING
+    done (v0.7): `chaos --wallpaper`. glfw is forced onto x11 (GLFW_PLATFORM_X11), so a wayland session goes through xwayland without asking. one undecorated, unfocusable window per glfw monitor at the monitor's position and size, created hidden, then via glfw3native + xlib: _NET_WM_WINDOW_TYPE_DESKTOP, _NET_WM_STATE below + sticky + skip taskbar + skip pager, _NET_WM_DESKTOP all, WM_HINTS input False, empty XShape input region. then shown. verified with xprop on kwin's xwayland: desktop type, below, no focus, 1920x1080+0+0, bottom of _NET_CLIENT_LIST_STACKING
 
     each monitor has its own gl context and its own Renderer. "each" derives the extra seeds as blake3(seed || "monitor" || i), so one seed still describes the whole setup. vsync is off per window and one sleep paces the whole loop at wallpaper_fps (30 default), because vsync on N windows stacks
 
@@ -503,7 +503,7 @@ Why not zig... well best of two but too young for this project. And I barely kno
 
     sync on start, on login, on a button: send the seed_fulls you hold, get state per seed back, mark transferred / revoked locally.
 
-    how it landed (v1.0): no oauth inside the app. the site's /login?app=1 signs you in with google and shows the session jwt; the app takes it (`--login-token`, or paste in the account tab, "open the sign-in page" does xdg-open) and keeps it in ~/.config/chaos/session (0600). libsecret later, maybe. the token rides as a bearer header on /api/me, /api/ticket, /api/claim, /api/vault, /api/sync, /api/file/:seed (client/src/sync/api.cpp, libcurl + nlohmann). `--login-dev NAME` for registries with ALLOW_FAKE_LOGIN
+    done (v1.0): no oauth inside the app. the site's /login?app=1 signs you in with google and shows the session jwt; the app takes it (`--login-token`, or paste in the account tab, "open the sign-in page" does xdg-open) and keeps it in ~/.config/chaos/session (0600). libsecret later, maybe. the token rides as a bearer header on /api/me, /api/ticket, /api/claim, /api/vault, /api/sync, /api/file/:seed (client/src/sync/api.cpp, libcurl + nlohmann). `--login-dev NAME` for registries with ALLOW_FAKE_LOGIN
 
         `--roll`: commit, ticket, seed in one go (client/src/sync/session_flow.cpp rollClaimable). the app checks the ticket's signature and that it carries the commit it sent before trusting it. panel: one button when connected
 
@@ -521,7 +521,7 @@ Why not zig... well best of two but too young for this project. And I barely kno
 
     windows: no. mac: no. (until the next adhd hit, as stated)
 
-    how it landed (v1.1): `cmake --install` puts chaos + chaos-registry-dev in bin/, shaders and assets in share/chaos/, the .desktop and the icon where they go, the two format docs in share/doc. the binary looks for its resources next to itself, then at ../share/chaos, then at the build-time path, so the same build runs from the source tree, a prefix, a .deb or an appimage. `chaos --version`
+    done (v1.1): `cmake --install` puts chaos + chaos-registry-dev in bin/, shaders and assets in share/chaos/, the .desktop and the icon where they go, the two format docs in share/doc. the binary looks for its resources next to itself, then at ../share/chaos, then at the build-time path, so the same build runs from the source tree, a prefix, a .deb or an appimage. `chaos --version`
 
         .deb + .rpm + .tar.gz: cpack from client/build (DEB;RPM;TGZ, deps on libglfw3, libsodium23, libssl3, libcurl4, libx11-6, libxext6, libgl1 and the fedora names for the rpm)
 
@@ -533,7 +533,7 @@ Why not zig... well best of two but too young for this project. And I barely kno
 
         the registry deploy lives in the registry repo now (needs my cloudflare + google accounts and a prod key that is never the dev one). the app refuses any registry whose /api/health pubkey is not the one it ships
 
-    how it landed (2026-11-08): packages per distro for the people who stepped up to test it on kali, ubuntu, garuda hyprland and fedora. packaging/build-portable.sh builds the .deb, .rpm, .tar.gz and the appimage inside a debian bookworm container so they run on old glibc too, packaging/build-arch.sh builds the arch package with the plasma plugin in. they go on the github releases page, nothing built is in git. and big thanks to the contributors and the testers, you found the stuff I couldn't see from one machine
+    done (2026-11-08): packages per distro for the people who stepped up to test it on kali, ubuntu, garuda hyprland and fedora. packaging/build-portable.sh builds the .deb, .rpm, .tar.gz and the appimage inside a debian bookworm container so they run on old glibc too, packaging/build-arch.sh builds the arch package with the plasma plugin in. they go on the github releases page, nothing built is in git. and big thanks to the contributors and the testers, you found the stuff I couldn't see from one machine
 
 16. roadmap + where it is (2026-11-04)
 
