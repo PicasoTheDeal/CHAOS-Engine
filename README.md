@@ -103,7 +103,7 @@ the why of everything is in `Design map`, the how in `Data and logic flow`, both
 
 ## licence, sort of
 
-the repo is public so people can read it and test it. it's not open source: don't ship it, fork it into smthing else or sell it. if you want to build on it, ask me first.
+the repo is public so people can read it and test it. it's not open source(yet): don't ship it, fork it into smthing else or sell it. if you want to build on it, ask me first.
 
 ## where things stand
 
