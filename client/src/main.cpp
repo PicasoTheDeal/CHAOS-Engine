@@ -141,10 +141,14 @@ int main(int argc, char** argv) {
     cf::Ticket ticket = o.ticket; bool hasTicket = o.hasTicket; uint8_t clientRandom[32]; std::memcpy(clientRandom, o.clientRandom, 32);
     auto token = api::sessionToken();
     std::string startNote;
-    if (!canGenerate) {
+    if (!canGenerate && !ticketPath.empty()) {
+        // a ticket the registry signed IS the session for a by-hand roll: it was issued to a signed in account on the vault
+        // page and the allowance is already spent. so no login needed here, only the signature has to check
+        cf::Ticket t{};
+        if (!cf::readTicket(ticketPath, t) || !cf::verifyTicketSig(t, CHAOS_SERVER_PUBKEY)) { std::fprintf(stderr, "%s is not a ticket this registry signed (get one from %s/vault after a chaos --commit, then roll with the same out.reveal)\n", ticketPath.c_str(), registryUrl.c_str()); return 3; }
+    } else if (!canGenerate) {
         // no session (or no registry): nothing is generated. a kept or activated seed may play; otherwise the lobby, so the
-        // window still opens and the account tab is reachable. a ticket roll is the one thing that cannot wait
-        if (!ticketPath.empty()) { std::fprintf(stderr, "a claimable roll needs the registry and a session: sign in at %s/login?app=1 and run chaos --login-token <token>\n", registryUrl.c_str()); return 3; }
+        // window still opens and the account tab is reachable
         auto picked = pickWallpaperSeed(seedArg, false, startNote);
         if (!picked) { picked = lobbySeed(); startNote = online ? "sign in (account tab) to roll. this is the lobby." : "offline: nothing is generated. this is the lobby."; }
         seed = *picked;
@@ -378,7 +382,8 @@ int main(int argc, char** argv) {
         }
         if (app.reqReroll || app.reqRerollTicket || app.reqLoad) {
             Seed32 s;
-            if (!app.canGenerate() && (app.reqReroll || app.reqRerollTicket || (app.reqLoad && !activation::isActivated(*app.reqLoad) && !vault::has(*app.reqLoad)))) {
+            // a ticket roll passes the gate on its own: loadTicket checks the registry's signature, and a signed ticket is the session
+            if (!app.canGenerate() && (app.reqReroll || (app.reqLoad && !activation::isActivated(*app.reqLoad) && !vault::has(*app.reqLoad)))) {
                 app.status = app.online ? "sign in first (account tab): nothing is generated without an account." : "offline: only chaos kept or loaded online once can be used. nothing is generated offline.";
                 app.reqReroll = app.reqRerollTicket = false; app.reqLoad.reset();
                 continue;
