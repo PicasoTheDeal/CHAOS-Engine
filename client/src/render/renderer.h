@@ -1,5 +1,5 @@
 #pragma once
-// Uploads a Dimension to the GPU and draws it: scene into the post stack, post stack into the target.
+// uploads a Dimension to the GPU and draws it: scene into the post stack, post stack into the target.
 #include <memory>
 #include <vector>
 #include <string>

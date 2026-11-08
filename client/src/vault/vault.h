@@ -1,5 +1,5 @@
 #pragma once
-// The local vault: ~/.local/share/chaos/vault/<short>.chaos + .png. Plain files. The file is a receipt, the
+// the local vault: ~/.local/share/chaos/vault/<short>.chaos + .png. plain files. the file is a receipt, the
 // website is the truth. v0.4 writes preview-state files only (no ticket, no signatures); v0.5 adds the rest.
 #include <array>
 #include <filesystem>
@@ -17,8 +17,8 @@ void setDir(const std::filesystem::path& p);       // empty = back to the defaul
 std::filesystem::path configDir();                 // $XDG_CONFIG_HOME/chaos
 std::array<uint8_t, 16> instanceId();              // read or create $XDG_CONFIG_HOME/chaos/instance
 
-// Fills a chaos_file_t from a rolled dimension. With a ticket (and the client_random that produced the seed) the
-// state is ROLLED, otherwise PREVIEW. The preview png bytes are hashed into preview_hash.
+// fills a chaos_file_t from a rolled dimension. with a ticket (and the client_random that produced the seed) the
+// state is ROLLED, otherwise PREVIEW. the preview png bytes are hashed into preview_hash.
 chaos_file_t makeFile(const Dimension& d, const std::vector<uint8_t>& png, const cf::Ticket* ticket = nullptr, const uint8_t* clientRandom = nullptr);
 
 struct KeptEntry { std::filesystem::path chaosPath, pngPath; };

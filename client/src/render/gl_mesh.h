@@ -4,7 +4,7 @@
 namespace chaos {
 
 // VAO + interleaved VBO (pos, normal, and when the mesh has them uv, colour) + EBO.
-// Attribute 0 = position, 1 = normal, 2 = uv (vec2), 3 = colour (vec4). absent streams are not enabled.
+// attribute 0 = position, 1 = normal, 2 = uv (vec2), 3 = colour (vec4). absent streams are not enabled.
 class GLMesh {
 public:
     explicit GLMesh(const Mesh& m);
@@ -17,7 +17,7 @@ private:
     int count_ = 0;
 };
 
-// Dynamic point cloud: position (attr 0) + brightness (attr 1). Positions re-uploaded each frame.
+// dynamic point cloud: position (attr 0) + brightness (attr 1). positions re-uploaded each frame.
 class GLPoints {
 public:
     GLPoints(const std::vector<glm::vec3>& pos, const std::vector<float>& bright);

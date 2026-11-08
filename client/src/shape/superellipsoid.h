@@ -4,7 +4,7 @@
 
 namespace chaos {
 
-// Family 31 in the reference: one family that runs from octahedron through sphere to rounded box to star.
+// family 31 in the reference: one family that runs from octahedron through sphere to rounded box to star.
 struct SuperellipsoidParams {
     float e1, e2, ax, ay, az;
     int slices, stacks;

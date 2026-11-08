@@ -1,5 +1,5 @@
 #pragma once
-// ~/.config/chaos/settings.json. What the panel edits and what wallpaper mode reads at start.
+// ~/.config/chaos/settings.json. what the panel edits and what wallpaper mode reads at start.
 #include <string>
 #include <filesystem>
 

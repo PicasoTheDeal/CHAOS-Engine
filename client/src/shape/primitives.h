@@ -1,5 +1,5 @@
 #pragma once
-// three.js geometry equivalents. All return an indexed Mesh with smooth normals.
+// three.js geometry equivalents. all return an indexed Mesh with smooth normals.
 #include "shape/parametric.h"
 #include <glm/glm.hpp>
 #include <vector>

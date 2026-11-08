@@ -5,7 +5,7 @@
 
 namespace chaos {
 
-// One GLSL program loaded from the shaders/ directory. Uniform locations are cached by name.
+// one GLSL program loaded from the shaders/ directory. uniform locations are cached by name.
 class Shader {
 public:
     Shader(const std::string& vertFile, const std::string& fragFile);

@@ -38,7 +38,7 @@ static std::string readFile(const std::string& path) {
     return ss.str();
 }
 
-// "#include <file>" lines are replaced with that file's contents, one level deep. Used for the berry common block.
+// "#include <file>" lines are replaced with that file's contents, one level deep. used for the berry common block.
 static std::string preprocess(const std::string& src) {
     std::stringstream in(src), out;
     std::string line;

@@ -1,5 +1,5 @@
-// Dumps what the TypeScript server must reproduce bit for bit: props per seed, a signed ticket, a rolled file,
-// a claimed file. CHAOS/test/vectors/*.json. Run from the repo root after a build.
+// dumps what the TypeScript server must reproduce bit for bit: props per seed, a signed ticket, a rolled file,
+// a claimed file. CHAOS/test/vectors/*.json. run from the repo root after a build.
 #include "scene/props.h"
 #include "chaos_file/format.h"
 #include "seed/base58.h"

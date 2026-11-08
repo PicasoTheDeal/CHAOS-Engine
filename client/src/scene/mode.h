@@ -1,6 +1,6 @@
 #pragma once
-// Modes are post/mood presets, not different scenes. Same seed, same shape, just how much it moves.
-// Ids match enum chaos_mode in shared/chaos_format.h.
+// modes are post/mood presets, not different scenes. same seed, same shape, just how much it moves.
+// ids match enum chaos_mode in shared/chaos_format.h.
 #include "seed/rng.h"
 #include <string_view>
 

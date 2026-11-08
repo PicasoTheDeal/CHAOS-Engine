@@ -1,6 +1,6 @@
 #pragma once
-// .chaos v3: read, write, commit, derive, verify, and (registry side) sign. The layout is shared/chaos_format.h.
-// Used by the client, the dev registry tool and the tests. The TypeScript registry mirrors it.
+// .chaos v3: read, write, commit, derive, verify, and (registry side) sign. the layout is shared/chaos_format.h.
+// used by the client, the dev registry tool and the tests. the TypeScript registry mirrors it.
 #include <array>
 #include <string>
 #include <vector>

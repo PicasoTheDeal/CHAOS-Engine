@@ -64,14 +64,17 @@ stripped session. `chaos --no-libdecor` skips it (KDE decorates server side anyw
 
 ```
 cmake --install client/build --prefix /usr/local        # bin/chaos, share/chaos/{shaders,assets}, .desktop, icon
-(cd client/build && cpack -G "DEB;TGZ")                 # chaos-engine_1.1.0_amd64.deb, chaos-engine-1.1.0-Linux.tar.gz
+(cd client/build && cpack -G "DEB;RPM;TGZ")             # chaos-engine_1.1.0_amd64.deb, chaos-engine-1.1.0.x86_64.rpm, .tar.gz (rpm needs rpmbuild)
 packaging/build-appimage.sh                             # dist/CHAOS-x86_64.AppImage (downloads linuxdeploy + appimagetool once)
+packaging/build-portable.sh                             # all of the above inside debian bookworm (podman / docker): runs on old glibc, no plasma plugin
+packaging/build-arch.sh                                 # arch package from this tree, plasma plugin in, no git needed
 makepkg -si -p packaging/PKGBUILD                       # arch, from the git tree
 chaos --version
 ```
 
 The binary finds its shaders and assets next to itself, under `../share/chaos`, or at the build-time path, so the
-same build runs from the tree, a prefix, the .deb or the AppImage. Deploying the registry: `docs/deploy.md`.
+same build runs from the tree, a prefix, the .deb or the AppImage. Packages built on this machine link against this
+machine's glibc, so for other distros build them in the bookworm container.
 
 ## Registry session (v1.0)
 

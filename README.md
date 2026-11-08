@@ -22,15 +22,57 @@ I had a web toy before (chaos.tetstack.dev, three.js) and this is the real thing
 
 **Low-end stuff.** Render size, anti-aliasing, lite detail, draw less (no satellites, main shape alone), a low-end preset, pause on battery, pause when a fullscreen window covers the desktop. `chaos --bench 120` tells you what each knob buys on your machine.
 
-## Running it
+## Installing it
 
-Engine:
+Grab the file for your distro from the release (or whatever I sent you on telegram) and:
+
+**Kali / Debian / Ubuntu**
+
+```
+sudo apt install ./chaos-engine_1.1.0_amd64.deb
+```
+
+**Garuda / Arch / Manjaro** (this one has the KDE Plasma wallpaper plugin in it)
+
+```
+sudo pacman -U chaos-engine-1.1.0-1-x86_64.pkg.tar.zst
+```
+
+**Fedora / Nobara**
+
+```
+sudo dnf install ./chaos-engine-1.1.0.x86_64.rpm
+```
+
+**Anything else, or if the package above argues with your libs**
+
+```
+chmod +x CHAOS-x86_64.AppImage && ./CHAOS-x86_64.AppImage
+```
+
+Then `chaos` opens the app. The setup tab walks you through it: sign in, roll, keep, set as wallpaper.
+
+**As your actual wallpaper**
+
+- KDE Plasma 6 on arch: right click the desktop, configure desktop and wallpaper, wallpaper type CHAOS. On the other distros the plugin needs a build against your plasma, so use the next line instead.
+- Hyprland, sway, KDE wayland, anything with layer shell: `chaos --wallpaper`. It plays the seed you kept last (or the lobby when you have none). Autostart on hyprland is one line in `~/.config/hypr/hyprland.conf`: `exec-once = chaos --wallpaper`. Sway: `exec chaos --wallpaper`.
+- X11: same command, it goes behind your icons as a desktop window.
+
+It needs OpenGL 4.3. Intel from haswell up, any amd on mesa, nvidia on the proprietary driver all do it. If it opens black or dies, `chaos --version` and `~/.cache/chaos/plasma.log` (plugin) are what I need from you.
+
+## Building it yourself
 
 ```
 cmake -S client -B client/build -G Ninja -DCMAKE_INSTALL_PREFIX=/usr -DCHAOS_PLASMA=ON
 cmake --build client/build && sudo cmake --install client/build
 chaos
 ```
+
+Deps per distro are in `client/README.md`. `-DCHAOS_PLASMA=ON` needs the Plasma 6 dev packages, leave it off if you don't have KDE.
+
+## Making the packages
+
+`packaging/build-portable.sh` builds the .deb, .rpm, .tar.gz and the AppImage inside a debian bookworm container (podman or docker), so they run on old glibc too. `packaging/build-arch.sh` builds the arch package on an arch machine, plasma plugin included. Both drop into `dist/`.
 
 The registry (the site) is a separate private repo, so there's nothing to run for it here. The app talks to the live one, and a client built with the production public key (`shared/server_pubkey.h`) only trusts that one.
 

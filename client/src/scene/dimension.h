@@ -1,5 +1,5 @@
 #pragma once
-// Everything one seed rolls. CPU only, no GL. The renderer uploads it.
+// everything one seed rolls. CPU only, no GL. the renderer uploads it.
 #include <vector>
 #include <string>
 #include <glm/glm.hpp>

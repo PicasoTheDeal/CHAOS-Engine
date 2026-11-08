@@ -1,6 +1,6 @@
 #pragma once
-// Rarity is rolled, not scored. Fixed odds on the "rarity" sub-stream, deterministic from the seed, and the tier
-// unlocks visuals. The server recomputes it from the seed alone. Ids match enum chaos_tier in shared/chaos_format.h.
+// rarity is rolled, not scored. fixed odds on the "rarity" sub-stream, deterministic from the seed, and the tier
+// unlocks visuals. the server recomputes it from the seed alone. ids match enum chaos_tier in shared/chaos_format.h.
 #include "seed/rng.h"
 
 namespace chaos {

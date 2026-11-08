@@ -1,5 +1,5 @@
 #pragma once
-// Everything the window loop and the panel share. The panel only sets requests; main acts on them.
+// everything the window loop and the panel share. the panel only sets requests; main acts on them.
 #include <memory>
 #include <optional>
 #include <string>

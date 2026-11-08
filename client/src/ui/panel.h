@@ -1,5 +1,5 @@
 #pragma once
-// Dear ImGui control panel: vault, roll, view, settings, account. Plus the boot poster.
+// Dear ImGui control panel: vault, roll, view, settings, account. plus the boot poster.
 #include <string>
 #include <vector>
 #include "app.h"

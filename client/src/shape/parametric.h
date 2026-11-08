@@ -37,10 +37,10 @@ struct Mesh {
     float boundingRadius() const;  // max distance from origin
 };
 
-// Port of three.js ParametricGeometry: f(u, v) over [0,1]^2, slices x stacks quads.
+// port of three.js ParametricGeometry: f(u, v) over [0,1]^2, slices x stacks quads.
 Mesh parametric(const std::function<glm::vec3(float, float)>& f, int slices, int stacks);
 
-// Plain UV sphere, used for the backdrop dome.
+// plain UV sphere, used for the backdrop dome.
 Mesh sphere(float radius, int widthSeg, int heightSeg);
 
 } // namespace chaos

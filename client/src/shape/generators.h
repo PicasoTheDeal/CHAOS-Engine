@@ -19,7 +19,7 @@ struct GeoParams {
 };
 GeoParams rollGeoParams(Xoshiro256& rng);
 
-// Builds one shape family. `depth` > 0 means we are inside a compound (keeps the vertex budget sane).
+// builds one shape family. `depth` > 0 means we are inside a compound (keeps the vertex budget sane).
 Mesh buildShape(int type, const GeoParams& gp, Xoshiro256& rng, int depth = 0);
 
 } // namespace chaos

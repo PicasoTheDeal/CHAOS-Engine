@@ -1,5 +1,5 @@
 // chaos-registry-dev: the registry's half of the .chaos flow, locally, until the website exists.
-// This is the reference the TypeScript server mirrors. One flat text db, no users, no money.
+// this is the reference the TypeScript server mirrors. one flat text db, no users, no money.
 //
 //   keygen  --key server.key --pub shared/server_pubkey.h
 //   ticket  --key server.key --db registry.db --user N --commit <hex from chaos --commit> --out t.ticket
