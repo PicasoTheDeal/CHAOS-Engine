@@ -306,11 +306,11 @@ void Panel::drawPoster(App& app, int w, int h) {
 
 // ---- the panel --------------------------------------------------------------------------------------------
 void Panel::previewSize(int w, int h, int& pw, int& ph) {
-    const float M = 16, W = 480, GAP = 24, PAD = 16;
-    pw = int(float(w) - 2 * M - W - GAP - 2 * PAD); ph = pw * 9 / 16;
-    const int maxH = h - int(2 * M) - 410;                       // the brand line, the status, three rows of keys with their hints
-    if (ph > maxH) { ph = maxH; pw = ph * 16 / 9; }
-    if (pw < 360 || ph < 200) { pw = ph = 0; }                   // too small for a desk: the chaos fills the window instead
+    const float M = 16, PAD = 16;
+    const float availW = float(w) - 2 * M - 2 * PAD, availH = float(h) - 2 * M - 230;   // header, tabs, the line under it, footer
+    pw = int(availW * 0.52f); ph = pw * 9 / 16;
+    if (ph > availH) { ph = int(availH); pw = ph * 16 / 9; }
+    if (pw < 320 || ph < 180) { pw = ph = 0; }                   // too small for a desk: the chaos fills the window instead
 }
 void Panel::clearColor(const App& app, float rgb[3]) {
     const Theme& t = app.persisted.theme == "light" ? LIGHT : DARK;
@@ -325,30 +325,7 @@ void Panel::draw(App& app, int w, int h, unsigned previewTex, int pw, int ph) {
     g_accent = accentFrom(app.dim->pal.b);
     ImGui::GetStyle().Colors[ImGuiCol_CheckMark] = g_accent; ImGui::GetStyle().Colors[ImGuiCol_SliderGrabActive] = g_accent; ImGui::GetStyle().Colors[ImGuiCol_PlotHistogram] = g_accent;
     const ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar;
-    if (previewTex) {
-        // the desk: one opaque sheet over the whole window. the stage (preview + the big keys) on the left, the column on the right
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, tk.BG);
-        ImGui::SetNextWindowPos(ImVec2(M, M));
-        ImGui::SetNextWindowSize(ImVec2(float(w) - 2 * M, float(h) - 2 * M));
-        ImGui::Begin("chaos-desk", nullptr, flags);
-        ImDrawList* dl = ImGui::GetWindowDrawList();
-        ImVec2 wp = ImGui::GetWindowPos();
-        archRect(dl, wp, ImVec2(wp.x + float(w) - 2 * M, wp.y + float(h) - 2 * M), ImGui::GetColorU32(tk.LINE2), 9);
-        { ImVec4 g = g_accent; g.w = 0.07f; dl->AddRectFilledMultiColor(ImVec2(wp.x + float(w) - 2 * M - W, wp.y), ImVec2(wp.x + float(w) - 2 * M, wp.y + 120), ImGui::GetColorU32(g), ImGui::GetColorU32(g), 0, 0); }
-        const float stageW = float(w) - 2 * M - W - 24;
-        ImGui::BeginChild("stage", ImVec2(stageW, 0), false);
-        stage(app, previewTex, pw, ph);
-        ImGui::EndChild();
-        ImGui::SameLine(0, 24);
-        ImVec2 cp = ImGui::GetCursorScreenPos();
-        dl->AddLine(ImVec2(cp.x - 12, wp.y + 8), ImVec2(cp.x - 12, wp.y + float(h) - 2 * M - 8), ImGui::GetColorU32(tk.LINE));
-        ImGui::BeginChild("column", ImVec2(W - 32, 0), false, ImGuiWindowFlags_NoScrollbar);
-        column(app, W - 32, dl);
-        ImGui::EndChild();
-        ImGui::End();
-        ImGui::PopStyleColor();
-        return;
-    }
+    if (app.settings.desk && pw > 0) { desk(app, w, h, previewTex, pw, ph); return; }
     // the canvas: the chaos fills the window, the panel floats on the right and lets it through
     ImGui::SetNextWindowPos(ImVec2(float(w) - W - M, M));
     ImGui::SetNextWindowSize(ImVec2(W, float(h) - 2 * M));
@@ -361,59 +338,97 @@ void Panel::draw(App& app, int w, int h, unsigned previewTex, int pw, int ph) {
     ImGui::End();
 }
 
-// the preview of the chaos and the keys a person actually needs, big, with a line under each saying what it does
-void Panel::stage(App& app, unsigned tex, int pw, int ph) {
+// the chaos as an image, with one line under it saying what it is. nothing else, the keys live on the pages
+void Panel::preview(App& app, unsigned tex, int pw, int ph) {
     Dimension& d = *app.dim;
     ImDrawList* dl = ImGui::GetWindowDrawList();
-    ImVec2 p = ImGui::GetCursorScreenPos();
-    drawMark(dl, ImVec2(p.x, p.y - 2), 1.6f, ImGui::GetColorU32(g_accent));
-    trackedAt(dl, labelFont(), 11, ImVec2(p.x + 36, p.y + 6), "chaos", 11 * 0.32f, ImGui::GetColorU32(tk.SILVER));
-    trackedAt(dl, labelFont(), LABEL_PX, ImVec2(p.x + 118, p.y + 7), app.hasTicket ? "/claimable roll" : app.kept ? "/kept" : "/preview", LABEL_PX * 0.12f, ImGui::GetColorU32(tk.FAINT));
-    ImGui::Dummy(ImVec2(0, 30));
     ImVec2 ip = ImGui::GetCursorScreenPos();
-    ImGui::Image((ImTextureID)(intptr_t)tex, ImVec2(float(pw), float(ph)), ImVec2(0, 1), ImVec2(1, 0));   // gl textures are bottom up
+    if (tex) ImGui::Image((ImTextureID)(intptr_t)tex, ImVec2(float(pw), float(ph)), ImVec2(0, 1), ImVec2(1, 0));   // gl textures are bottom up
+    else ImGui::Dummy(ImVec2(float(pw), float(ph)));
     archRect(dl, ip, ImVec2(ip.x + pw, ip.y + ph), ImGui::GetColorU32(tk.LINE2), 6);
-    ImGui::Dummy(ImVec2(0, 10));
-    // the line: what is on the stage
+    ImGui::Dummy(ImVec2(0, 8));
     if (d.unlocks.gold) tag(tierName(d.tier), tk.GOLD, tk.GOLD); else tag(tierName(d.tier));
     ImGui::SameLine();
-    ImGui::TextColored(tk.SILVER2, "%s  /  %s  /  %s  /  %s", toShortHex(d.seed).c_str(), familyName(d.family), shapeName(d.shapeType), modeName(d.displayMode));
-    ImGui::SameLine(float(pw) - 150);
-    if (app.online) tag("online", g_accent, g_accent); else if (app.devOffline) tag("dev offline", tk.GOLD, tk.GOLD); else tag("offline", tk.RED, tk.RED);
-    ImGui::SameLine();
-    char fpsBuf[32]; std::snprintf(fpsBuf, sizeof fpsBuf, "%.0f fps", app.fps);
-    tag(app.settings.paused ? "paused" : fpsBuf, tk.DIM);
-    if (serif_) ImGui::PushFont(serif_, 15);
-    ImGui::PushTextWrapPos(float(pw)); ImGui::TextWrapped("%s", app.status.empty() ? "Quiet." : app.status.c_str()); ImGui::PopTextWrapPos();
-    if (serif_) ImGui::PopFont();
-    ImGui::Dummy(ImVec2(0, 8));
-    // the keys. two per row, a hint under each
-    g_keyH = 46; g_keyPx = 12;
-    const float kw = (float(pw) - 12) * 0.5f;
-    auto pair = [&](const char* a, const char* ha, bool aOn, bool aPrimary, const char* b, const char* hb, bool bOn, bool bPrimary) -> int {
-        int hit = 0;
-        ImGui::BeginGroup(); ImGui::BeginDisabled(!aOn); if (key(a, kw, false, aPrimary)) hit = 1; ImGui::EndDisabled(); ImGui::TextColored(tk.FAINT, "%s", ha); ImGui::EndGroup();
-        ImGui::SameLine(0, 12);
-        ImGui::BeginGroup(); ImGui::BeginDisabled(!bOn); if (key(b, kw, false, bPrimary)) hit = 2; ImGui::EndDisabled(); ImGui::TextColored(tk.FAINT, "%s", hb); ImGui::EndGroup();
+    ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + float(pw) - 70);
+    ImGui::TextColored(tk.SILVER2, "%s  /  %s  /  %s  /  %s%s", toShortHex(d.seed).c_str(), familyName(d.family), shapeName(d.shapeType), modeName(d.displayMode), app.hasTicket ? "  /  claimable" : app.kept ? "  /  kept" : "  /  preview");
+    ImGui::PopTextWrapPos();
+}
+
+// the desk: the ui is the window. header with the state, the tabs across the top, the page below. vault / view / model
+// put the chaos on the left and their controls on the right; the other pages are one readable column
+void Panel::desk(App& app, int w, int h, unsigned tex, int pw, int ph) {
+    const float M = 16;
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, tk.BG);
+    ImGui::SetNextWindowPos(ImVec2(M, M));
+    ImGui::SetNextWindowSize(ImVec2(float(w) - 2 * M, float(h) - 2 * M));
+    ImGui::Begin("chaos-desk", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar);
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    ImVec2 wp = ImGui::GetWindowPos();
+    const float W = float(w) - 2 * M;
+    archRect(dl, wp, ImVec2(wp.x + W, wp.y + float(h) - 2 * M), ImGui::GetColorU32(tk.LINE2), 9);
+    { ImVec4 g = g_accent; g.w = 0.06f; dl->AddRectFilledMultiColor(wp, ImVec2(wp.x + W, wp.y + 90), ImGui::GetColorU32(g), ImGui::GetColorU32(g), 0, 0); }
+    const float cw = ImGui::GetContentRegionAvail().x;
+    // header: the mark, the name, where you are. the state on the right
+    {
+        ImVec2 p = ImGui::GetCursorScreenPos();
+        drawMark(dl, ImVec2(p.x, p.y - 2), 1.6f, ImGui::GetColorU32(g_accent));
+        trackedAt(dl, labelFont(), 11, ImVec2(p.x + 36, p.y + 6), "chaos", 11 * 0.32f, ImGui::GetColorU32(tk.SILVER));
+        const char* crumbs[] = { "/setup", "/vault", "/roll", "/view", "/model", "/prefs", "/account" };
+        trackedAt(dl, labelFont(), LABEL_PX, ImVec2(p.x + 118, p.y + 7), crumbs[tab_], LABEL_PX * 0.12f, ImGui::GetColorU32(tk.FAINT));
+        ImGui::Dummy(ImVec2(200, 22));
+        ImGui::SameLine(cw - 300);
+        if (app.me) tag(app.me->name.c_str(), tk.DIM); else tag("not signed in", tk.DIM);
+        ImGui::SameLine();
+        if (app.online) tag("online", g_accent, g_accent); else if (app.devOffline) tag("dev offline", tk.GOLD, tk.GOLD); else tag("offline", tk.RED, tk.RED);
+        ImGui::SameLine();
+        char fpsBuf[32]; std::snprintf(fpsBuf, sizeof fpsBuf, "%.0f fps", app.fps);
+        tag(app.settings.paused ? "paused" : fpsBuf, tk.DIM);
         ImGui::Dummy(ImVec2(0, 6));
-        return hit;
-    };
-    const bool canRoll = app.canGenerate(), canClaimable = app.loggedIn() && app.me && app.me->banked >= 1;
-    std::string claimableLabel = app.loggedIn() && app.me && app.me->banked < 1 ? "next claimable roll in " + humanMs(app.me->nextInMs) : "roll a claimable one";
-    int h1 = pair("roll a free preview  [R]", canRoll ? "free, unlimited, can never be claimed" : app.online ? "sign in first (account tab)" : "offline: nothing is generated", canRoll, false,
-                  claimableLabel.c_str(), "your one roll this week, signed by the registry", canClaimable, canClaimable);
-    if (h1 == 1) app.reqReroll = true;
-    if (h1 == 2) app.reqClaimableRoll = true;
-    const bool kept = app.kept.has_value();
-    int h2 = pair("keep it to my folder  [K]", "writes the .chaos + a png to your folder", true, app.hasTicket && !kept,
-                  "claim it", app.hasTicket ? (kept ? "the registry signs it, then it's yours" : "keep it first, then claim") : "only a claimable roll can be claimed", app.hasTicket && kept, app.hasTicket && kept);
-    if (h2 == 1) app.reqKeep = true;
-    if (h2 == 2) app.reqClaimCurrent = true;
-    int h3 = pair("set as my wallpaper", "kde: every desktop switches to this chaos", true, false,
-                  "full view  [V]", "the chaos fills the window, esc hides the panel", true, false);
-    if (h3 == 1) app.reqSetDesktop = true;
-    if (h3 == 2) app.settings.desk = false;
-    g_keyH = KEY_H; g_keyPx = KEY_PX;
+    }
+    // tabs across the whole width, big enough to hit
+    {
+        const char* names[] = { "setup", "vault", "roll", "view", "model", "prefs", "account" };
+        float kw = (cw - 6 * 6) / 7;
+        g_keyPx = 10.f; g_keyH = 40;
+        for (int i = 0; i < 7; i++) { if (i) ImGui::SameLine(0, 6); if (key(names[i], kw, tab_ == i)) tab_ = i; }
+        g_keyPx = KEY_PX; g_keyH = KEY_H;
+        ImGui::Dummy(ImVec2(0, 10));
+    }
+    const float footH = 72;
+    ImGui::BeginChild("page", ImVec2(0, -footH), false);
+    g_keyH = 42;
+    if (wantsPreview() && pw > 0) {
+        ImGui::BeginChild("preview", ImVec2(float(pw), 0), false, ImGuiWindowFlags_NoScrollbar);
+        preview(app, tex, pw, ph);
+        ImGui::EndChild();
+        ImGui::SameLine(0, 24);
+        ImGui::BeginChild("controls", ImVec2(0, 0), false);
+        switch (tab_) { case 1: tabVault(app); break; case 3: tabView(app); break; default: tabModel(app); break; }
+        ImGui::EndChild();
+    } else {
+        // one column, readable width, centred
+        const float colW = std::min(cw, 760.f);
+        ImGui::SetCursorPosX((cw - colW) * 0.5f);
+        ImGui::BeginChild("plain", ImVec2(colW, 0), false);
+        switch (tab_) { case 0: tabSetup(app); break; case 2: tabRoll(app); break; case 5: tabSettings(app); break; default: tabAccount(app); break; }
+        ImGui::EndChild();
+    }
+    g_keyH = KEY_H;
+    ImGui::EndChild();
+    // footer: the status line, the keys, the clock
+    {
+        ImVec2 q = ImGui::GetCursorScreenPos();
+        dl->AddLine(ImVec2(q.x, q.y), ImVec2(q.x + cw, q.y), ImGui::GetColorU32(tk.LINE));
+        ImGui::Dummy(ImVec2(0, 8));
+        if (serif_) ImGui::PushFont(serif_, 15);
+        ImGui::PushTextWrapPos(cw - 90); ImGui::TextWrapped("%s", app.status.empty() ? "Quiet." : app.status.c_str()); ImGui::PopTextWrapPos();
+        if (serif_) ImGui::PopFont();
+        lbl("esc panel / r preview / k keep / m mood / n mode / 1-4 mode / space pause / f fullscreen / v full view", tk.FAINT);
+        ImGui::SameLine(cw - 70);
+        lbl(clockNow().c_str(), tk.FAINT);
+    }
+    ImGui::End();
+    ImGui::PopStyleColor();
 }
 
 void Panel::column(App& app, float W, ImDrawList* dl) {
@@ -537,7 +552,7 @@ void Panel::tabModel(App& app) {
     if (serif_) ImGui::PushFont(serif_, 17);
     ImGui::TextWrapped("Your own thing on the stage. A .cheng replaces the main shape; the satellites go; the rest stays the seed's.");
     if (serif_) ImGui::PopFont();
-    ImGui::TextDisabled("obj, stl, gltf, glb straight in. blend, fbx, dae, step, usd through blender if it is installed. the converter welds, keeps every seam and groove (it only thins a mesh past 120k vertices), sizes it; the .cheng lands in your models folder. it brings the materials along too: base colours, vertex colours and one base-colour texture (the one covering the most of it), roughness, metal, glow. pick 'own' below to see them, or a skin and colour of your own.");
+    ImGui::PushTextWrapPos(); ImGui::TextDisabled("obj, stl, gltf, glb straight in. blend, fbx, dae, step, usd through blender if it is installed. the converter welds, keeps every seam and groove (it only thins a mesh past 120k vertices), sizes it; the .cheng lands in your models folder. it brings the materials along too: base colours, vertex colours and one base-colour texture (the one covering the most of it), roughness, metal, glow. pick 'own' below to see them, or a skin and colour of your own."); ImGui::PopTextWrapPos();
     h2("file");
     static char pathBuf[1024] = {};
     if (pathBuf[0] == 0 && !c.modelPath.empty()) std::strncpy(pathBuf, c.modelPath.c_str(), sizeof pathBuf - 1);
@@ -598,7 +613,7 @@ void Panel::tabVault(App& app) {
     if (key("refresh")) { vaultDirty_ = true; thumbs_.clear(); }
     ImGui::SameLine();
     ImGui::TextDisabled("%zu files", entries_.size());
-    lbl(vault::dir().c_str());
+    ImGui::PushTextWrapPos(); ImGui::TextDisabled("%s", vault::dir().c_str()); ImGui::PopTextWrapPos();
     ImGui::BeginChild("entries", ImVec2(0, 0), false);
     for (const auto& row : entries_) {
         const auto& e = row.e;
@@ -680,6 +695,18 @@ void Panel::tabRoll(App& app) {
 
 void Panel::tabView(App& app) {
     Dimension& d = *app.dim;
+    if (app.settings.desk) {
+        const bool kept = app.kept.has_value();
+        if (!kept) { if (primaryKey("keep it to my folder  [K]")) app.reqKeep = true; }
+        else { ImGui::BeginDisabled(!app.hasTicket); if (primaryKey(app.hasTicket ? "claim it (the registry signs it)" : "kept. a preview roll can't be claimed")) app.reqClaimCurrent = true; ImGui::EndDisabled(); }
+        hint(kept ? "the .chaos and a 1080p png are in your folder" : "writes the .chaos and a 1080p png to your folder. a kept roll plays offline");
+        float kw = (ImGui::GetContentRegionAvail().x - 8) * 0.5f;
+        if (key("set as my wallpaper", kw)) app.reqSetDesktop = true;
+        ImGui::SameLine(0, 8);
+        if (key("full view  [V]", kw)) app.settings.desk = false;
+        hint("kde: every desktop switches to this chaos. full view: the chaos fills the window, esc hides the panel");
+        ImGui::Dummy(ImVec2(0, 6));
+    }
     // the three spellings of the seed, computed once per seed, not per frame (bip39 hashes)
     static Seed32 cachedSeed{}; static std::string hex, b58, words;
     if (hex.empty() || std::memcmp(cachedSeed.data(), d.seed.data(), 32) != 0) { cachedSeed = d.seed; hex = toHex(d.seed); b58 = base58Encode(d.seed.data(), 32); words = bip39Encode(d.seed); }

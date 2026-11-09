@@ -32,7 +32,7 @@ cmake --build client/build
 
 seeds: all 32 bytes drive the picture, hex, base58 and the 24 bip39 words aer the same seed. keys: Esc panel, R preview roll, K keep, M mood, N mode, 1-4 set a mode, Space pause, F fullscreen, V desk / full view, Ctrl+Q quit.
 
-the window opens on the desk: the chaos is a preview on the left with the big keys under it (roll, claimable roll, keep, claim, set as wallpaper, full view), the tabs on the right. V (or the full view key) makes the chaos fill the window with the panel floating over it, like before. keep always writes a 1920x1080 frame whatever the preview size is.
+the window opens on the desk: tabs across the top, one page at a time. setup is the guided 4 steps with big keys, roll has the roll keys, prefs and account aer plain forms. vault, view and model show the chaos as a preview on the left with their controls on the right, and view has the keep / claim / set as wallpaper keys. the other pages don't even render the chaos, so the gpu rests. V (or the full view key on the view page) makes the chaos fill the window with the panel floating over it, like before. keep always writes a 1920x1080 frame whatever the preview size is.
 
 vendored in `third_party/`: glad2 (generated, gl core 4.3), blake3 portable c, stb, dear imgui (only the files the panel uses, see the VENDORED note in there).
 

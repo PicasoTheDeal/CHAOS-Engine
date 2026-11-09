@@ -56,7 +56,7 @@ sudo dnf install ./chaos-engine-1.1.0-1.x86_64.rpm
 chmod +x CHAOS-x86_64.AppImage && ./CHAOS-x86_64.AppImage
 ```
 
-then `chaos` opens the app. the chaos plays as a preview on the left, the big keys under it do everything (roll, keep, claim, set as wallpaper) and the setup tab on the right walks you through it. V flips to the full view where the chaos fills the window.
+then `chaos` opens the app. tabs across the top, the setup page walks you through it (sign in, roll, keep, claim, set as wallpaper), the vault, view and model pages show the chaos as a preview next to their controls, the rest aer plain pages. V flips to the full view where the chaos fills the window.
 
 **as your actual wallpaper**
 

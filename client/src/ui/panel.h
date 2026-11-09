@@ -19,7 +19,8 @@ public:
     ~Panel();
     void beginFrame();
     void draw(App& app, int w, int h, unsigned previewTex = 0, int pw = 0, int ph = 0);   // panel + overlays, when open. with a preview texture: the desk layout (stage on the left, the column on the right)
-    static void previewSize(int w, int h, int& pw, int& ph);   // how big the stage preview is for this window in the desk layout. 0 = too small, use the full canvas
+    bool wantsPreview() const { return tab_ == 1 || tab_ == 3 || tab_ == 4; }   // vault, view, model show the chaos. the other pages are plain
+    static void previewSize(int w, int h, int& pw, int& ph);   // how big the preview is for this window in the desk layout. 0 = too small, use the full canvas
     static void clearColor(const App& app, float rgb[3]);      // the desk's paper, for the gl clear behind the ui
     void drawPoster(App& app, int w, int h);  // boot poster, full bleed
     void endFrame();
@@ -34,7 +35,8 @@ private:
     void tabSettings(App& app);
     void tabAccount(App& app);
     void column(App& app, float W, ImDrawList* dl);   // hud, tabs, body, footer: the panel proper
-    void stage(App& app, unsigned tex, int pw, int ph);                  // the preview and the big keys under it
+    void desk(App& app, int w, int h, unsigned tex, int pw, int ph);     // the desk: header, tabs across, the page (with the preview on the tabs that want it), footer
+    void preview(App& app, unsigned tex, int pw, int ph);                // the chaos as an image with its line under it
     void refreshVault();
     ImFont* headline_ = nullptr;
     ImFont* mono_ = nullptr;

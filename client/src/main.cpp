@@ -441,12 +441,12 @@ int main(int argc, char** argv) {
         static RenderTarget preview, keepTarget;
         int pw = 0, ph = 0;
         if (app.settings.desk && app.settings.panelOpen) Panel::previewSize(w, h, pw, ph);
-        const bool desk = pw > 0;
+        const bool desk = pw > 0, showsChaos = !desk || panel.wantsPreview();
         if (desk) { preview.ensure(pw, ph); app.renderer->resize(pw, ph); } else app.renderer->resize(w, h);
         double now = glfwGetTime();
         float dt = float(std::min(0.1, now - lastT)); lastT = now;
         if (!app.settings.paused) app.simTime += dt;
-        app.renderer->frame(float(app.simTime), app.settings.paused ? 0.f : dt, desk ? preview.fbo : 0);
+        if (showsChaos) app.renderer->frame(float(app.simTime), app.settings.paused ? 0.f : dt, desk ? preview.fbo : 0);   // a plain page draws no chaos at all
         if (desk) { float bg[3]; Panel::clearColor(app, bg); glBindFramebuffer(GL_FRAMEBUFFER, 0); glViewport(0, 0, w, h); glClearColor(bg[0], bg[1], bg[2], 1); glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); }
         if (app.firstFrameAt < 0) app.firstFrameAt = now + (app.settings.poster ? 0.9 : -1.0);   // poster holds a beat after the first real frame
         if (!app.bootShown && app.firstFrameAt >= 0 && now > app.firstFrameAt + 0.7) app.bootShown = true;
