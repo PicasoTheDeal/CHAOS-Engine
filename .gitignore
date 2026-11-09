@@ -11,3 +11,6 @@ distro/
 *.ticket
 server/dev/registry.db
 server/dev/server.key
+
+# editor
+.vscode/

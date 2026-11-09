@@ -32,10 +32,16 @@ grab the file for your distro from the releases page (or whatever I sent you on 
 sudo apt install ./chaos-engine_1.1.0_amd64.deb
 ```
 
-**garuda / arch / manjaro** (this one has the kde plasma wallpaper plugin in it)
+**garuda / arch / manjaro**
 
 ```
 sudo pacman -U chaos-engine-1.1.0-1-x86_64.pkg.tar.zst
+```
+
+and only if you're on kde plasma 6, the wallpaper plugin on top (this one pulls plasma-workspace, so skip it on hyprland and the rest):
+
+```
+sudo pacman -U chaos-engine-plasma-1.1.0-1-x86_64.pkg.tar.zst
 ```
 
 **fedora / nobara**
@@ -50,11 +56,11 @@ sudo dnf install ./chaos-engine-1.1.0-1.x86_64.rpm
 chmod +x CHAOS-x86_64.AppImage && ./CHAOS-x86_64.AppImage
 ```
 
-then `chaos` opens the app. the setup tab walks you through it: sign in, roll, keep, set as wallpaper.
+then `chaos` opens the app. the chaos plays as a preview on the left, the big keys under it do everything (roll, keep, claim, set as wallpaper) and the setup tab on the right walks you through it. V flips to the full view where the chaos fills the window.
 
 **as your actual wallpaper**
 
-- kde plasma 6 on arch: right click the desktop, configure desktop and wallpaper, wallpaper type CHAOS. on the other distros the plugin needs a build against your plasma, so use the next line instead.
+- kde plasma 6 on arch with the -plasma package: right click the desktop, configure desktop and wallpaper, wallpaper type CHAOS. or just press "set as my wallpaper" in the app. on the other distros the plugin needs a build against your plasma, so use the next line instead.
 - hyprland, sway, kde wayland, anything with layer shell: `chaos --wallpaper`. it plays the seed you kept last (or the lobby when you have none). autostart on hyprland is one line in `~/.config/hypr/hyprland.conf`: `exec-once = chaos --wallpaper`. sway: `exec chaos --wallpaper`.
 - x11: same command, it goes behind your icons as a desktop window.
 - windows with wsl: the app runs under wslg, the wallpaper can't, there's no linux desktop to be the wallpaper of. `chaos --seed <hex> --shot out.png` and set the png yourself.
@@ -95,7 +101,7 @@ add `-DCHAOS_PLASMA=ON` to the first line if you're on kde plasma 6 and installe
 
 ## making the packages
 
-`packaging/build-portable.sh` builds the .deb, .rpm, .tar.gz and the appimage inside a debian bookworm container (podman or docker), cuz a .deb built on arch wants arch's glibc and won't install anywhere else. `packaging/build-arch.sh` builds the arch package on an arch machine, plasma plugin included. both drop into `dist/`. the ones I ship go on the releases page, nothing built is in git.
+`packaging/build-portable.sh` builds the .deb, .rpm, .tar.gz and the appimage inside a debian bookworm container (podman or docker), cuz a .deb built on arch wants arch's glibc and won't install anywhere else. `packaging/build-arch.sh` builds the two arch packages on an arch machine, the app and the plasma plugin seperately so people without kde don't get 80 kde packages pulled in. all of it drops into `dist/`. the ones I ship go on the releases page, nothing built is in git.
 
 the registry (the site) is a seperate private repo, so there's nothing to run for it here. the app talks to the live one, and a client built with the production public key (`shared/server_pubkey.h`) only trusts that one.
 

@@ -23,6 +23,7 @@ struct Settings {
     bool fullscreen = false;
     int monitor = 0;
     bool poster = true;
+    bool desk = true;          // desk: the ui is the window and the chaos is a preview in it. off: the chaos fills the window, the panel floats on the right (v toggles)
 };
 
 struct BootStage { std::string key, headline, detail; double at; };

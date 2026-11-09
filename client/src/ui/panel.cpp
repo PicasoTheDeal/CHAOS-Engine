@@ -127,10 +127,11 @@ void tag(const char* s, ImVec4 c = tk.SILVER, ImVec4 border = tk.LINE2) {
 // .key: flat hairline button, fills silver on hover / when on. w: 0 fits, -1 fills the row
 // w: 0 fits, -1 fills the row. on: lit in the accent. primary: always filled in the accent (the one thing to press)
 float g_keyPx = KEY_PX;   // the tab row draws its keys a size down
+float g_keyH = KEY_H;     // the stage's action keys draw taller
 bool key(const char* label, float w = 0, bool on = false, bool primary = false) {
     const bool disabled = ImGui::GetStyle().Alpha < 1.f;
     const float px = g_keyPx, sp = px * 0.16f, tw = trackedWidth(labelFont(), px, label, sp);
-    ImVec2 size(w > 0 ? w : (w < 0 ? ImGui::GetContentRegionAvail().x : tw + 36), KEY_H);
+    ImVec2 size(w > 0 ? w : (w < 0 ? ImGui::GetContentRegionAvail().x : tw + 36), g_keyH);
     ImVec2 p = ImGui::GetCursorScreenPos();
     bool clicked = ImGui::InvisibleButton(label, size);
     bool hov = ImGui::IsItemHovered() && !disabled;
@@ -143,6 +144,8 @@ bool key(const char* label, float w = 0, bool on = false, bool primary = false) 
     return clicked && !disabled;
 }
 bool primaryKey(const char* label, float w = -1) { return key(label, w, false, true); }
+// one dim line under a key saying what it does
+void hint(const char* s) { ImGui::PushTextWrapPos(); ImGui::TextColored(tk.FAINT, "%s", s); ImGui::PopTextWrapPos(); }
 // .msg: a bordered line, red when bad
 void msg(const char* s, bool bad = false) {
     ImDrawList* dl = ImGui::GetWindowDrawList(); ImVec2 p = ImGui::GetCursorScreenPos(); float w = ImGui::GetContentRegionAvail().x;
@@ -302,21 +305,118 @@ void Panel::drawPoster(App& app, int w, int h) {
 }
 
 // ---- the panel --------------------------------------------------------------------------------------------
-void Panel::draw(App& app, int w, int h) {
+void Panel::previewSize(int w, int h, int& pw, int& ph) {
+    const float M = 16, W = 480, GAP = 24, PAD = 16;
+    pw = int(float(w) - 2 * M - W - GAP - 2 * PAD); ph = pw * 9 / 16;
+    const int maxH = h - int(2 * M) - 410;                       // the brand line, the status, three rows of keys with their hints
+    if (ph > maxH) { ph = maxH; pw = ph * 16 / 9; }
+    if (pw < 360 || ph < 200) { pw = ph = 0; }                   // too small for a desk: the chaos fills the window instead
+}
+void Panel::clearColor(const App& app, float rgb[3]) {
+    const Theme& t = app.persisted.theme == "light" ? LIGHT : DARK;
+    rgb[0] = t.BG.x; rgb[1] = t.BG.y; rgb[2] = t.BG.z;
+}
+
+void Panel::draw(App& app, int w, int h, unsigned previewTex, int pw, int ph) {
     if (!app.settings.panelOpen) return;
     const float W = 480, M = 16;
     const Theme* want = app.persisted.theme == "light" ? &LIGHT : &DARK;
     if (want != g_theme) { g_theme = want; applyTheme(); }
     g_accent = accentFrom(app.dim->pal.b);
     ImGui::GetStyle().Colors[ImGuiCol_CheckMark] = g_accent; ImGui::GetStyle().Colors[ImGuiCol_SliderGrabActive] = g_accent; ImGui::GetStyle().Colors[ImGuiCol_PlotHistogram] = g_accent;
+    const ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar;
+    if (previewTex) {
+        // the desk: one opaque sheet over the whole window. the stage (preview + the big keys) on the left, the column on the right
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, tk.BG);
+        ImGui::SetNextWindowPos(ImVec2(M, M));
+        ImGui::SetNextWindowSize(ImVec2(float(w) - 2 * M, float(h) - 2 * M));
+        ImGui::Begin("chaos-desk", nullptr, flags);
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        ImVec2 wp = ImGui::GetWindowPos();
+        archRect(dl, wp, ImVec2(wp.x + float(w) - 2 * M, wp.y + float(h) - 2 * M), ImGui::GetColorU32(tk.LINE2), 9);
+        { ImVec4 g = g_accent; g.w = 0.07f; dl->AddRectFilledMultiColor(ImVec2(wp.x + float(w) - 2 * M - W, wp.y), ImVec2(wp.x + float(w) - 2 * M, wp.y + 120), ImGui::GetColorU32(g), ImGui::GetColorU32(g), 0, 0); }
+        const float stageW = float(w) - 2 * M - W - 24;
+        ImGui::BeginChild("stage", ImVec2(stageW, 0), false);
+        stage(app, previewTex, pw, ph);
+        ImGui::EndChild();
+        ImGui::SameLine(0, 24);
+        ImVec2 cp = ImGui::GetCursorScreenPos();
+        dl->AddLine(ImVec2(cp.x - 12, wp.y + 8), ImVec2(cp.x - 12, wp.y + float(h) - 2 * M - 8), ImGui::GetColorU32(tk.LINE));
+        ImGui::BeginChild("column", ImVec2(W - 32, 0), false, ImGuiWindowFlags_NoScrollbar);
+        column(app, W - 32, dl);
+        ImGui::EndChild();
+        ImGui::End();
+        ImGui::PopStyleColor();
+        return;
+    }
+    // the canvas: the chaos fills the window, the panel floats on the right and lets it through
     ImGui::SetNextWindowPos(ImVec2(float(w) - W - M, M));
     ImGui::SetNextWindowSize(ImVec2(W, float(h) - 2 * M));
-    ImGui::Begin("chaos", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar);
+    ImGui::Begin("chaos", nullptr, flags);
     ImDrawList* dl = ImGui::GetWindowDrawList();
     ImVec2 wp = ImGui::GetWindowPos();
     archRect(dl, wp, ImVec2(wp.x + W, wp.y + h - 2 * M), ImGui::GetColorU32(tk.LINE2), 9);   // the sheet's edge, drafted
     { ImVec4 g = g_accent; g.w = 0.07f; dl->AddRectFilledMultiColor(wp, ImVec2(wp.x + W, wp.y + 120), ImGui::GetColorU32(g), ImGui::GetColorU32(g), 0, 0); }   // a breath of the palette at the top
+    column(app, W, dl);
+    ImGui::End();
+}
 
+// the preview of the chaos and the keys a person actually needs, big, with a line under each saying what it does
+void Panel::stage(App& app, unsigned tex, int pw, int ph) {
+    Dimension& d = *app.dim;
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    ImVec2 p = ImGui::GetCursorScreenPos();
+    drawMark(dl, ImVec2(p.x, p.y - 2), 1.6f, ImGui::GetColorU32(g_accent));
+    trackedAt(dl, labelFont(), 11, ImVec2(p.x + 36, p.y + 6), "chaos", 11 * 0.32f, ImGui::GetColorU32(tk.SILVER));
+    trackedAt(dl, labelFont(), LABEL_PX, ImVec2(p.x + 118, p.y + 7), app.hasTicket ? "/claimable roll" : app.kept ? "/kept" : "/preview", LABEL_PX * 0.12f, ImGui::GetColorU32(tk.FAINT));
+    ImGui::Dummy(ImVec2(0, 30));
+    ImVec2 ip = ImGui::GetCursorScreenPos();
+    ImGui::Image((ImTextureID)(intptr_t)tex, ImVec2(float(pw), float(ph)), ImVec2(0, 1), ImVec2(1, 0));   // gl textures are bottom up
+    archRect(dl, ip, ImVec2(ip.x + pw, ip.y + ph), ImGui::GetColorU32(tk.LINE2), 6);
+    ImGui::Dummy(ImVec2(0, 10));
+    // the line: what is on the stage
+    if (d.unlocks.gold) tag(tierName(d.tier), tk.GOLD, tk.GOLD); else tag(tierName(d.tier));
+    ImGui::SameLine();
+    ImGui::TextColored(tk.SILVER2, "%s  /  %s  /  %s  /  %s", toShortHex(d.seed).c_str(), familyName(d.family), shapeName(d.shapeType), modeName(d.displayMode));
+    ImGui::SameLine(float(pw) - 150);
+    if (app.online) tag("online", g_accent, g_accent); else if (app.devOffline) tag("dev offline", tk.GOLD, tk.GOLD); else tag("offline", tk.RED, tk.RED);
+    ImGui::SameLine();
+    char fpsBuf[32]; std::snprintf(fpsBuf, sizeof fpsBuf, "%.0f fps", app.fps);
+    tag(app.settings.paused ? "paused" : fpsBuf, tk.DIM);
+    if (serif_) ImGui::PushFont(serif_, 15);
+    ImGui::PushTextWrapPos(float(pw)); ImGui::TextWrapped("%s", app.status.empty() ? "Quiet." : app.status.c_str()); ImGui::PopTextWrapPos();
+    if (serif_) ImGui::PopFont();
+    ImGui::Dummy(ImVec2(0, 8));
+    // the keys. two per row, a hint under each
+    g_keyH = 46; g_keyPx = 12;
+    const float kw = (float(pw) - 12) * 0.5f;
+    auto pair = [&](const char* a, const char* ha, bool aOn, bool aPrimary, const char* b, const char* hb, bool bOn, bool bPrimary) -> int {
+        int hit = 0;
+        ImGui::BeginGroup(); ImGui::BeginDisabled(!aOn); if (key(a, kw, false, aPrimary)) hit = 1; ImGui::EndDisabled(); ImGui::TextColored(tk.FAINT, "%s", ha); ImGui::EndGroup();
+        ImGui::SameLine(0, 12);
+        ImGui::BeginGroup(); ImGui::BeginDisabled(!bOn); if (key(b, kw, false, bPrimary)) hit = 2; ImGui::EndDisabled(); ImGui::TextColored(tk.FAINT, "%s", hb); ImGui::EndGroup();
+        ImGui::Dummy(ImVec2(0, 6));
+        return hit;
+    };
+    const bool canRoll = app.canGenerate(), canClaimable = app.loggedIn() && app.me && app.me->banked >= 1;
+    std::string claimableLabel = app.loggedIn() && app.me && app.me->banked < 1 ? "next claimable roll in " + humanMs(app.me->nextInMs) : "roll a claimable one";
+    int h1 = pair("roll a free preview  [R]", canRoll ? "free, unlimited, can never be claimed" : app.online ? "sign in first (account tab)" : "offline: nothing is generated", canRoll, false,
+                  claimableLabel.c_str(), "your one roll this week, signed by the registry", canClaimable, canClaimable);
+    if (h1 == 1) app.reqReroll = true;
+    if (h1 == 2) app.reqClaimableRoll = true;
+    const bool kept = app.kept.has_value();
+    int h2 = pair("keep it to my folder  [K]", "writes the .chaos + a png to your folder", true, app.hasTicket && !kept,
+                  "claim it", app.hasTicket ? (kept ? "the registry signs it, then it's yours" : "keep it first, then claim") : "only a claimable roll can be claimed", app.hasTicket && kept, app.hasTicket && kept);
+    if (h2 == 1) app.reqKeep = true;
+    if (h2 == 2) app.reqClaimCurrent = true;
+    int h3 = pair("set as my wallpaper", "kde: every desktop switches to this chaos", true, false,
+                  "full view  [V]", "the chaos fills the window, esc hides the panel", true, false);
+    if (h3 == 1) app.reqSetDesktop = true;
+    if (h3 == 2) app.settings.desk = false;
+    g_keyH = KEY_H; g_keyPx = KEY_PX;
+}
+
+void Panel::column(App& app, float W, ImDrawList* dl) {
     // hud: brand, state tags
     {
         ImVec2 p = ImGui::GetCursorScreenPos();
@@ -365,12 +465,11 @@ void Panel::draw(App& app, int w, int h) {
         ImGui::TextWrapped("%s", app.status.empty() ? "Quiet." : app.status.c_str());
         if (serif_) ImGui::PopFont();
         ImGui::Dummy(ImVec2(0, 2));
-        lbl("esc panel / r reroll / k keep / m mood / n mode", tk.FAINT);
+        lbl("esc panel / r preview / k keep / m mood / n mode / v view", tk.FAINT);
         lbl("1-4 mode / space pause / f fullscreen", tk.FAINT);
         ImGui::SameLine(W - 20 - 70);
         lbl(clockNow().c_str(), tk.FAINT);
     }
-    ImGui::End();
 }
 
 // the list is rebuilt only when something changed: verifying two signatures and reading activated.json per entry
@@ -415,16 +514,16 @@ void Panel::tabSetup(App& app) {
     ImGui::Dummy(ImVec2(0, 10));
     step(2, "roll a claimable dimension", haveRoll, "commit, ticket and seed in one go. R gives free previews that can never be claimed.");
     ImGui::BeginDisabled(!signedIn || (app.me && app.me->banked < 1));
-    if (primaryKey(app.me && app.me->banked < 1 ? ("next roll in " + humanMs(app.me->nextInMs)).c_str() : "roll")) app.reqClaimableRoll = true;
+    if (primaryKey(app.me && app.me->banked < 1 ? ("next claimable roll in " + humanMs(app.me->nextInMs)).c_str() : "roll a claimable one")) app.reqClaimableRoll = true;
     ImGui::EndDisabled();
     ImGui::Dummy(ImVec2(0, 10));
     step(3, "keep it, then claim it", kept && !haveRoll, "keep writes the file to your folder; claim asks the registry to sign it. then it is yours, listed in your vault.");
     ImGui::BeginDisabled(!haveRoll);
-    if (!kept) { if (primaryKey("keep [k]")) app.reqKeep = true; } else { if (primaryKey("claim this roll")) app.reqClaimCurrent = true; }
+    if (!kept) { if (primaryKey("keep it to my folder  [K]")) app.reqKeep = true; } else { if (primaryKey("claim it (the registry signs it)")) app.reqClaimCurrent = true; }
     ImGui::EndDisabled();
     ImGui::Dummy(ImVec2(0, 10));
     step(4, "put it on the desktop", false, "kde: one key. elsewhere, pick the CHAOS wallpaper in your desktop settings and paste the seed.");
-    if (primaryKey("set as desktop wallpaper")) app.reqSetDesktop = true;
+    if (primaryKey("set as my wallpaper")) app.reqSetDesktop = true;
     ImGui::Dummy(ImVec2(0, 10));
     lbl("files");
     ImGui::TextWrapped("%s", vault::dir().c_str());
@@ -542,17 +641,19 @@ void Panel::tabRoll(App& app) {
     }
     h2("preview");
     ImGui::TextWrapped("a preview roll is free and unlimited. it renders, it can be kept, it can never be claimed.");
-    if (key("preview roll  [R]", -1)) app.reqReroll = true;
+    if (key("roll a free preview  [R]", -1)) app.reqReroll = true;
+    hint("renders, can be kept, can never be claimed. as many as you like.");
     h2("claimable");
     if (app.loggedIn()) {
         ImGui::TextWrapped("claimable roll: commit, ticket, seed, in one go. %d/%d in the bank; one a week.%s", app.me->banked, app.me->max, app.me->nextInMs > 0 ? ("  next one in " + humanMs(app.me->nextInMs) + ".").c_str() : "");
         ImGui::BeginDisabled(app.me->banked < 1);
-        if (primaryKey("claimable roll")) app.reqClaimableRoll = true;
+        if (primaryKey(app.me->banked < 1 ? ("next claimable roll in " + humanMs(app.me->nextInMs)).c_str() : "roll a claimable one")) app.reqClaimableRoll = true;
         ImGui::EndDisabled();
+        hint("commit, ticket, seed in one go. one a week per account. keep it, then claim it and it is yours.");
         if (app.hasTicket) {
             bool kept = app.kept.has_value();
             ImGui::BeginDisabled(!kept);
-            if (key(kept ? "claim this roll" : "keep it first (K), then claim", -1)) app.reqClaimCurrent = true;
+            if (key(kept ? "claim it (the registry signs it)" : "keep it first [K], then claim", -1)) app.reqClaimCurrent = true;
             ImGui::EndDisabled();
         }
         ImGui::Spacing();
@@ -565,8 +666,7 @@ void Panel::tabRoll(App& app) {
     if (revealBuf_[0] == 0 && !app.revealPath.empty()) std::strncpy(revealBuf_, app.revealPath.c_str(), sizeof revealBuf_ - 1);
     ImGui::InputText("reveal", revealBuf_, sizeof revealBuf_);
     if (key("roll with this ticket", -1)) { app.ticketPath = ticketBuf_; app.revealPath = revealBuf_; app.reqRerollTicket = true; }
-    ImGui::TextDisabled("commit first: chaos --commit out.reveal, send the printed hex with the ticket request");
-    ImGui::TextDisabled("allowance: website (v0.8). offline = preview only.");
+    hint("the by-hand route: chaos --commit out.reveal prints a commit, the vault page on the site turns it into a .ticket, and that ticket rolls with the SAME out.reveal. don't run --commit again in between, the ticket only matches the reveal it was made for.");
     h2("this roll");
     ImGui::Text("%s", app.hasTicket ? "claimable (ticket)" : "preview");
     if (app.hasTicket) ImGui::TextDisabled("ticket user %llu", (unsigned long long)app.ticket.user_id);
@@ -690,6 +790,7 @@ void Panel::tabAccount(App& app) {
         ImGui::BeginDisabled(!app.online || tokBuf[0] == 0);
         if (primaryKey("connect")) { app.reqConnectToken = tokBuf; std::memset(tokBuf, 0, sizeof tokBuf); }
         ImGui::EndDisabled();
+        hint("the whole token, it is long. copy it with the key on the sign-in page, paste it here, connect. 30 days.");
     }
     h2("your .chaos files");
     {

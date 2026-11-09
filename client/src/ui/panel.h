@@ -8,6 +8,8 @@
 #include "seed/seed.h"
 struct GLFWwindow;
 struct ImFont;
+struct ImDrawList;
+struct ImVec2;
 
 namespace chaos {
 
@@ -16,7 +18,9 @@ public:
     explicit Panel(GLFWwindow* win);
     ~Panel();
     void beginFrame();
-    void draw(App& app, int w, int h);        // panel + overlays, when open
+    void draw(App& app, int w, int h, unsigned previewTex = 0, int pw = 0, int ph = 0);   // panel + overlays, when open. with a preview texture: the desk layout (stage on the left, the column on the right)
+    static void previewSize(int w, int h, int& pw, int& ph);   // how big the stage preview is for this window in the desk layout. 0 = too small, use the full canvas
+    static void clearColor(const App& app, float rgb[3]);      // the desk's paper, for the gl clear behind the ui
     void drawPoster(App& app, int w, int h);  // boot poster, full bleed
     void endFrame();
     bool wantsKeyboard() const;
@@ -29,6 +33,8 @@ private:
     void tabModel(App& app);
     void tabSettings(App& app);
     void tabAccount(App& app);
+    void column(App& app, float W, ImDrawList* dl);   // hud, tabs, body, footer: the panel proper
+    void stage(App& app, unsigned tex, int pw, int ph);                  // the preview and the big keys under it
     void refreshVault();
     ImFont* headline_ = nullptr;
     ImFont* mono_ = nullptr;

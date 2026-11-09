@@ -30,7 +30,9 @@ cmake --build client/build
 ./client/build/chaos --ticket t.ticket --reveal out.reveal --shot p.png --keep   # step 2: the seed derives from ticket + reveal
 ```
 
-seeds: all 32 bytes drive the picture, hex, base58 and the 24 bip39 words aer the same seed. keys: Esc panel, R preview roll, K keep, M mood, N mode, 1-4 set a mode, Space pause, F fullscreen, Ctrl+Q quit.
+seeds: all 32 bytes drive the picture, hex, base58 and the 24 bip39 words aer the same seed. keys: Esc panel, R preview roll, K keep, M mood, N mode, 1-4 set a mode, Space pause, F fullscreen, V desk / full view, Ctrl+Q quit.
+
+the window opens on the desk: the chaos is a preview on the left with the big keys under it (roll, claimable roll, keep, claim, set as wallpaper, full view), the tabs on the right. V (or the full view key) makes the chaos fill the window with the panel floating over it, like before. keep always writes a 1920x1080 frame whatever the preview size is.
 
 vendored in `third_party/`: glad2 (generated, gl core 4.3), blake3 portable c, stb, dear imgui (only the files the panel uses, see the VENDORED note in there).
 
@@ -66,7 +68,7 @@ cmake --install client/build --prefix /usr/local        # bin/chaos, share/chaos
 (cd client/build && cpack -G "DEB;RPM;TGZ")             # chaos-engine_1.1.0_amd64.deb, chaos-engine-1.1.0-1.x86_64.rpm, .tar.gz (rpm needs rpmbuild)
 packaging/build-appimage.sh                             # dist/CHAOS-x86_64.AppImage (downloads linuxdeploy + appimagetool once)
 packaging/build-portable.sh                             # all of the above inside debian bookworm (podman / docker): runs on old glibc, no plasma plugin
-packaging/build-arch.sh                                 # arch package from this tree, plasma plugin in, no git needed
+packaging/build-arch.sh                                 # the two arch packages from this tree (chaos-engine, chaos-engine-plasma), no git needed
 makepkg -si -p packaging/PKGBUILD                       # arch, from the git tree
 chaos --version
 ```
@@ -131,6 +133,10 @@ the prefs tab has a display section: draw (everything / no satellites / main sha
 ## wallpaper backends
 
 `chaos --wallpaper` picks the wayland layer shell when the compositor has it (sway, hyprland, river, kwin), otherwise the x11 desktop window (xwayland under a wayland session). `--backend wayland|x11` forces one. `--monitors mirror|each`, `--wallpaper-fps N`, `--frames N` (testing), `--no-pause`. no fullscreen app pause on the wayland path (compositors don't tell you), battery pause on both, both off by default.
+
+## the by-hand roll, without a session
+
+`chaos --commit out.reveal` prints a commit. paste it on the site's vault page, it gives you a `chaos.ticket` (that's your one roll for the week). then from the folder both files are in: `chaos --ticket chaos.ticket --reveal out.reveal --shot p.png --keep`. a ticket the registry signed is the session for that roll, no login needed. don't run `--commit` again in between, the ticket only matches the reveal it was made for (and `--commit` refuses to overwrite an existing out.reveal for exactly that reason).
 
 ## the .chaos flow by hand (the dev tool)
 

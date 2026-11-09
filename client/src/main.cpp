@@ -2,6 +2,7 @@
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
 #include <cstdio>
+#include <cctype>
 #include <cstring>
 #include <string>
 #include <algorithm>
@@ -42,6 +43,25 @@ using namespace chaos;
 static App* gApp = nullptr;
 static Panel* gPanel = nullptr;
 
+// an offscreen target the chaos renders into when the ui is the window (the desk layout), and for keeping a 1080p frame
+struct RenderTarget {
+    GLuint fbo = 0, tex = 0, depth = 0; int w = 0, h = 0;
+    void ensure(int W, int H) {
+        if (fbo && W == w && H == h) return;
+        release();
+        w = W; h = H;
+        glGenFramebuffers(1, &fbo); glGenTextures(1, &tex); glGenRenderbuffers(1, &depth);
+        glBindTexture(GL_TEXTURE_2D, tex); glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glBindRenderbuffer(GL_RENDERBUFFER, depth); glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, w, h);
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, 0);
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
+    void release() { if (fbo) glDeleteFramebuffers(1, &fbo); if (tex) glDeleteTextures(1, &tex); if (depth) glDeleteRenderbuffers(1, &depth); fbo = tex = depth = 0; }
+};
+
 static void keyCallback(GLFWwindow*, int key, int, int action, int mods) {
     if (action != GLFW_PRESS || !gApp) return;
     if (gPanel && gPanel->wantsKeyboard() && key != GLFW_KEY_ESCAPE) return;
@@ -56,6 +76,7 @@ static void keyCallback(GLFWwindow*, int key, int, int action, int mods) {
         d.setDisplayMode(Mode(key - GLFW_KEY_1)); a.status = std::string("mode -> ") + modeName(d.displayMode); break;
     case GLFW_KEY_SPACE: a.settings.paused = !a.settings.paused; break;
     case GLFW_KEY_F: a.reqFullscreen = true; break;
+    case GLFW_KEY_V: a.settings.desk = !a.settings.desk; a.status = a.settings.desk ? "desk: the chaos is a preview, the keys are the window" : "full view: the chaos fills the window"; break;
     case GLFW_KEY_Q: if (mods & GLFW_MOD_CONTROL) a.reqQuit = true; break;
     }
 }
@@ -145,7 +166,8 @@ int main(int argc, char** argv) {
         // a ticket the registry signed IS the session for a by-hand roll: it was issued to a signed in account on the vault
         // page and the allowance is already spent. so no login needed here, only the signature has to check
         cf::Ticket t{};
-        if (!cf::readTicket(ticketPath, t) || !cf::verifyTicketSig(t, CHAOS_SERVER_PUBKEY)) { std::fprintf(stderr, "%s is not a ticket this registry signed (get one from %s/vault after a chaos --commit, then roll with the same out.reveal)\n", ticketPath.c_str(), registryUrl.c_str()); return 3; }
+        if (!cf::readTicket(ticketPath, t)) { std::fprintf(stderr, "cannot read %s: no such file, or not a 160 byte .ticket. run this from the folder the ticket is in, or give the full path\n", ticketPath.c_str()); return 3; }
+        if (!cf::verifyTicketSig(t, CHAOS_SERVER_PUBKEY)) { std::fprintf(stderr, "%s was not signed by this registry (get one from %s/vault after a chaos --commit, then roll with the same out.reveal)\n", ticketPath.c_str(), registryUrl.c_str()); return 3; }
     } else if (!canGenerate) {
         // no session (or no registry): nothing is generated. a kept or activated seed may play; otherwise the lobby, so the
         // window still opens and the account tab is reachable
@@ -250,9 +272,11 @@ int main(int argc, char** argv) {
             continue;
         }
         if (!app.reqConnectToken.empty()) {
+            while (!app.reqConnectToken.empty() && std::isspace((unsigned char)app.reqConnectToken.back())) app.reqConnectToken.pop_back();
+            while (!app.reqConnectToken.empty() && std::isspace((unsigned char)app.reqConnectToken.front())) app.reqConnectToken.erase(0, 1);
             auto who = api::me(app.registryUrl, app.reqConnectToken);
             if (who) { api::saveSession(app.reqConnectToken); app.token = app.reqConnectToken; app.me = *who.value; app.status = "connected as " + who.value->name; }
-            else app.status = "that token does not work here: " + (who.error ? who.error->message : "?");
+            else app.status = "that token does not work here: " + (who.error ? who.error->message : std::string("?")) + ". copy the whole thing from " + app.registryUrl + "/login?app=1 (the copy key there), it is long. a token from another registry or older than 30 days is no good";
             app.reqConnectToken.clear();
         }
         if (app.reqLogout) { app.reqLogout = false; api::clearSession(); app.token.reset(); app.me.reset(); app.status = "signed out"; }
@@ -413,26 +437,40 @@ int main(int argc, char** argv) {
         glfwSwapInterval(app.settings.vsync ? 1 : 0);
         app.renderer->setLayers(layersFromName(app.persisted.layers));
         app.renderer->setQuality({ app.persisted.renderScale, app.persisted.msaa, app.persisted.detail == "lite" });
-        app.renderer->resize(w, h);
+        // the desk: the ui is the window and the chaos renders into a preview texture. the canvas: the chaos is the window
+        static RenderTarget preview, keepTarget;
+        int pw = 0, ph = 0;
+        if (app.settings.desk && app.settings.panelOpen) Panel::previewSize(w, h, pw, ph);
+        const bool desk = pw > 0;
+        if (desk) { preview.ensure(pw, ph); app.renderer->resize(pw, ph); } else app.renderer->resize(w, h);
         double now = glfwGetTime();
         float dt = float(std::min(0.1, now - lastT)); lastT = now;
         if (!app.settings.paused) app.simTime += dt;
-        app.renderer->frame(float(app.simTime), app.settings.paused ? 0.f : dt, 0);
+        app.renderer->frame(float(app.simTime), app.settings.paused ? 0.f : dt, desk ? preview.fbo : 0);
+        if (desk) { float bg[3]; Panel::clearColor(app, bg); glBindFramebuffer(GL_FRAMEBUFFER, 0); glViewport(0, 0, w, h); glClearColor(bg[0], bg[1], bg[2], 1); glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); }
         if (app.firstFrameAt < 0) app.firstFrameAt = now + (app.settings.poster ? 0.9 : -1.0);   // poster holds a beat after the first real frame
         if (!app.bootShown && app.firstFrameAt >= 0 && now > app.firstFrameAt + 0.7) app.bootShown = true;
 
         if (app.reqKeep) {
             app.reqKeep = false;
-            glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-            auto px = readFramebufferRgb(w, h);
-            app.kept = vault::keep(*app.dim, encodePng(px.data(), w, h), app.hasTicket ? &app.ticket : nullptr, app.clientRandom);
+            int kw = w, kh = h;
+            if (desk) {
+                // the preview is small: keep a proper 1080p frame rendered offscreen, then the stack goes back to the preview size next frame
+                kw = 1920; kh = 1080; keepTarget.ensure(kw, kh);
+                app.renderer->resize(kw, kh);
+                app.renderer->frame(float(app.simTime), 0.f, keepTarget.fbo);
+                glBindFramebuffer(GL_READ_FRAMEBUFFER, keepTarget.fbo);
+            } else glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+            auto px = readFramebufferRgb(kw, kh);
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            app.kept = vault::keep(*app.dim, encodePng(px.data(), kw, kh), app.hasTicket ? &app.ticket : nullptr, app.clientRandom);
             app.status = "kept " + app.kept->chaosPath.string();
             std::printf("kept  %s\n", app.kept->chaosPath.c_str());
         }
 
         panel.beginFrame();
         if (app.settings.poster) panel.drawPoster(app, w, h);
-        panel.draw(app, w, h);
+        panel.draw(app, w, h, desk ? preview.tex : 0, pw, ph);
         panel.endFrame();
         if (!uiShotPath.empty()) {
             static int frames = 0, sinceKey = -1;

@@ -3,6 +3,7 @@
 #include <filesystem>
 #include "model/cheng.h"
 #include <cstdio>
+#include <cctype>
 #include <cstring>
 #include <cstdlib>
 #include <string>
@@ -152,6 +153,7 @@ bool runCommands(Options& o, const RegistryState& reg, int& rc) {
         o.loginToken = *r.value;
     }
     if (!o.loginToken.empty()) {
+        while (!o.loginToken.empty() && std::isspace((unsigned char)o.loginToken.back())) o.loginToken.pop_back();
         auto who = api::me(registryUrl, o.loginToken);
         if (!who) { std::fprintf(stderr, "that token does not work here: %s\n", who.error ? who.error->message.c_str() : "?"); rc = 2; return true; }
         api::saveSession(o.loginToken);
@@ -192,6 +194,10 @@ bool runCommands(Options& o, const RegistryState& reg, int& rc) {
         std::printf("ticket   user %llu  ->  claimable roll (one go)\n", (unsigned long long)o.ticket.user_id);
     }
     if (!o.commitPath.empty()) {
+        if (std::filesystem::exists(o.commitPath)) {
+            std::fprintf(stderr, "%s already exists from an earlier --commit. if you already took a ticket for it on the vault page, roll with that ticket and this file (chaos --ticket chaos.ticket --reveal %s). a new commit would not match that ticket. if you really want a new one, delete the file first\n", o.commitPath.c_str(), o.commitPath.c_str());
+            rc = 2; return true;
+        }
         uint8_t cr[32]; cf::randomBytes(cr, 32);
         if (!cf::writeReveal(o.commitPath, cr)) { std::fprintf(stderr, "cannot write %s\n", o.commitPath.c_str()); rc = 1; return true; }
         for (uint8_t b : cf::commitOf(cr)) std::printf("%02x", b);
